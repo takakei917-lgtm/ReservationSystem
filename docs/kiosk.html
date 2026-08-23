@@ -17,6 +17,7 @@
     button { width: 100%; padding: 15px; background-color: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 20px; font-weight: bold; margin-top: 10px; }
     .status-box { text-align: center; padding: 15px; background-color: #d1fae5; border-radius: 8px; }
     .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
+    .cancel-notice { font-size: 14px; color: #475569; text-align: center; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #a7f3d0; font-weight: bold; }
     ul { list-style: none; padding: 0; }
     li { padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
     li.next-item { font-weight: bold; background-color: #ecfdf5; border-radius: 6px; border-left: 5px solid var(--primary); }
@@ -28,7 +29,6 @@
 <div class="container">
   <h1>🏪 店頭受付（順番待ち登録）</h1>
 
-  <!-- 受付フォーム（時間制限なし） -->
   <div class="card">
     <h2>お名前と人数を入力してください</h2>
     <div class="input-group">
@@ -36,9 +36,12 @@
       <input type="number" id="userCount" class="input-count" value="1" min="1" placeholder="人数">
     </div>
     <button onclick="registerName()">受付する</button>
+
+    <div class="cancel-notice">
+      ⚠️ キャンセルの場合は、スタッフまで直接お申し出ください。
+    </div>
   </div>
 
-  <!-- 現在の全体状況 -->
   <div class="card">
     <h2>現在の案内状況</h2>
     <div class="status-box">
