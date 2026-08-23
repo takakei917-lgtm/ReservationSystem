@@ -128,10 +128,11 @@
     currentQueue.forEach((item, index) => {
       const li = document.createElement('li');
       if (index === 0) {
+        // 先頭は人数の多さに関わらず「1人分の目安時間（20分）以内」と表示
         li.classList.add('next-item');
-        const maxWait = item.count * timePerPerson;
-        li.innerHTML = `<span><span class="badge-next">NEXT</span> 1番目: ${item.name} 様 (${item.count}名)</span><span style="color: #2563eb;">[およそ ${maxWait} 分以内]</span>`;
+        li.innerHTML = `<span><span class="badge-next">NEXT</span> 1番目: ${item.name} 様 (${item.count}名)</span><span style="color: #2563eb;">[およそ ${timePerPerson} 分以内]</span>`;
       } else {
+        // 2番目以降は「これまでの累計人数 × 20分」で計算
         const waitMinutes = accumulatedPeople * timePerPerson;
         li.textContent = `${index + 1}番目: ${item.name} 様 (${item.count}名) （あと約 ${waitMinutes} 分）`;
       }
