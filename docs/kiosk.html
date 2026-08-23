@@ -18,12 +18,11 @@
     .status-box { text-align: center; padding: 15px; background-color: #d1fae5; border-radius: 8px; }
     .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
     .cancel-notice { font-size: 14px; color: #475569; text-align: center; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #a7f3d0; font-weight: bold; }
+    .limit-notice { background-color: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; }
     ul { list-style: none; padding: 0; }
     li { padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
     li.next-item { font-weight: bold; background-color: #ecfdf5; border-radius: 6px; border-left: 5px solid var(--primary); }
     .badge-next { background-color: var(--primary); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
-
-    /* 保留リスト専用スタイル */
     .hold-card { border: 1px solid #fed7aa; background-color: #fff7ed; }
     .hold-badge { background-color: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
   </style>
@@ -35,11 +34,18 @@
 
   <div class="card">
     <h2>お名前と人数を入力してください</h2>
-    <div class="input-group">
-      <input type="text" id="userName" class="input-name" placeholder="お名前">
-      <input type="number" id="userCount" class="input-count" value="1" min="1" placeholder="人数">
+    
+    <div id="limitNotice" class="limit-notice" style="display: none;">
+      受付上限人数（<span id="maxLimitDisplay">50</span>名）に達したため、本日の受付は終了いたしました。
     </div>
-    <button onclick="registerName()">受付する</button>
+
+    <div id="formContainer">
+      <div class="input-group">
+        <input type="text" id="userName" class="input-name" placeholder="お名前">
+        <input type="number" id="userCount" class="input-count" value="1" min="1" placeholder="人数">
+      </div>
+      <button onclick="registerName()">受付する</button>
+    </div>
 
     <div class="cancel-notice">
       ⚠️ キャンセルの場合は、スタッフまで直接お申し出ください。
@@ -85,11 +91,33 @@
   const db = getDatabase(app);
 
   const queueRef = ref(db, 'queue');
-  const settingsRef = ref(db, 'settings/timePerPerson');
+  const settingsRef = ref(db, 'settings');
 
   let currentQueue = [];
   let onHoldQueue = [];
   let timePerPerson = 20;
+  let maxPeopleLimit = 50;
+
+  function checkLimit() {
+    document.getElementById('maxLimitDisplay').textContent = maxPeopleLimit;
+
+    const formEl = document.getElementById('formContainer');
+    const limitEl = document.getElementById('limitNotice');
+    
+    // ★合計人数を計算★
+    const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0) + 
+                        onHoldQueue.reduce((sum, item) => sum + item.count, 0);
+
+    if (totalPeople >= maxPeopleLimit) {
+      formEl.style.display = 'none';
+      limitEl.style.display = 'block';
+      return false;
+    } else {
+      formEl.style.display = 'block';
+      limitEl.style.display = 'none';
+      return true;
+    }
+  }
 
   onValue(queueRef, (snapshot) => {
     const data = snapshot.val();
@@ -111,18 +139,28 @@
 
   onValue(settingsRef, (snapshot) => {
     if (snapshot.exists()) {
-      timePerPerson = snapshot.val();
+      const data = snapshot.val();
+      if (data.timePerPerson) timePerPerson = data.timePerPerson;
+      if (data.maxPeopleLimit !== undefined) maxPeopleLimit = data.maxPeopleLimit;
       render();
     }
   });
 
   window.registerName = () => {
+    if (!checkLimit()) return alert('受付上限人数に達しております');
+
     const nameInput = document.getElementById('userName');
     const countInput = document.getElementById('userCount');
     const name = nameInput.value.trim();
     const count = parseInt(countInput.value) || 1;
 
     if (!name) return alert('お名前を入力してください');
+
+    const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0) + 
+                        onHoldQueue.reduce((sum, item) => sum + item.count, 0);
+    if (totalPeople + count > maxPeopleLimit) {
+      return alert(`上限人数（${maxPeopleLimit}名）を超えるため登録できません。`);
+    }
 
     push(queueRef, { name: name, count: count, status: 'waiting', createdAt: serverTimestamp() });
     nameInput.value = '';
@@ -131,6 +169,8 @@
   };
 
   function render() {
+    checkLimit();
+
     const totalGroups = currentQueue.length;
     const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0);
 
