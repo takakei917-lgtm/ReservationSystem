@@ -12,12 +12,16 @@
     .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
     .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     input[type="number"] { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; width: 70px; }
-    button { padding: 10px 16px; background-color: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
-    .btn-main { width: 100%; padding: 15px; font-size: 18px; margin-top: 10px; }
-    .btn-cancel { background-color: #64748b; padding: 6px 12px; font-size: 12px; }
+    button { padding: 8px 12px; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; }
+    .btn-main { width: 100%; padding: 15px; font-size: 18px; margin-top: 10px; background-color: #dc2626; }
+    .btn-cancel { background-color: #64748b; }
+    .btn-hold { background-color: #f59e0b; margin-right: 5px; }
+    .btn-restore { background-color: #2563eb; margin-right: 5px; }
     ul { list-style: none; padding: 0; }
     li { padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
     li:first-child { font-weight: bold; background-color: #fee2e2; border-radius: 6px; }
+    
+    .hold-card { border: 2px dashed #f59e0b; background-color: #fffbeeb0; }
   </style>
 </head>
 <body>
@@ -51,11 +55,16 @@
     <h2>現在の順番待ち一覧</h2>
     <ul id="waitingList"></ul>
   </div>
+
+  <div class="card hold-card">
+    <h2 style="color: #d97706; margin-top: 0;">⏳ 保留・ご不在一覧</h2>
+    <ul id="holdList"></ul>
+  </div>
 </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getDatabase, ref, onValue, remove, set, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  import { getDatabase, ref, onValue, remove, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
   // ★ご自身のFirebase設定情報★
   const firebaseConfig = {
@@ -76,13 +85,21 @@
   const settingsRef = ref(db, 'settings');
 
   let currentQueue = [];
+  let onHoldQueue = [];
 
   onValue(queueRef, (snapshot) => {
     const data = snapshot.val();
     currentQueue = [];
+    onHoldQueue = [];
+
     if (data) {
       Object.keys(data).forEach(key => {
-        currentQueue.push({ id: key, name: data[key].name, count: data[key].count || 1 });
+        const item = { id: key, name: data[key].name, count: data[key].count || 1, status: data[key].status || 'waiting' };
+        if (item.status === 'hold') {
+          onHoldQueue.push(item);
+        } else {
+          currentQueue.push(item);
+        }
       });
     }
     render();
@@ -121,6 +138,20 @@
     }
   };
 
+  // 保留にする
+  window.holdCustomer = (id, name) => {
+    if (confirm(`${name} 様を保留にしますか？`)) {
+      update(ref(db, `queue/${id}`), { status: 'hold' });
+    }
+  };
+
+  // 保留から通常並びの最後尾へ復帰
+  window.restoreCustomer = (id, name) => {
+    if (confirm(`${name} 様を通常の待ち列（最後尾）へ戻しますか？`)) {
+      update(ref(db, `queue/${id}`), { status: 'waiting', createdAt: serverTimestamp() });
+    }
+  };
+
   window.cancelCustomer = (id, name) => {
     if (confirm(`${name} 様の予約をキャンセル（削除）しますか？`)) {
       remove(ref(db, `queue/${id}`));
@@ -128,22 +159,46 @@
   };
 
   function render() {
+    // 通常リスト
     const listElement = document.getElementById('waitingList');
     listElement.innerHTML = '';
 
     if (currentQueue.length === 0) {
       listElement.innerHTML = '<li>現在待ちなし</li>';
-      return;
+    } else {
+      currentQueue.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <span>${index + 1}番目: ${item.name} 様 （${item.count}名）</span>
+          <div>
+            <button class="btn-hold" onclick="holdCustomer('${item.id}', '${item.name}')">保留</button>
+            <button class="btn-cancel" onclick="cancelCustomer('${item.id}', '${item.name}')">取消</button>
+          </div>
+        `;
+        listElement.appendChild(li);
+      });
     }
 
-    currentQueue.forEach((item, index) => {
-      const li = document.createElement('li');
-      li.innerHTML = `
-        <span>${index + 1}番目: ${item.name} 様 （${item.count}名）</span>
-        <button class="btn-cancel" onclick="cancelCustomer('${item.id}', '${item.name}')">取消</button>
-      `;
-      listElement.appendChild(li);
-    });
+    // 保留リスト
+    const holdListElement = document.getElementById('holdList');
+    holdListElement.innerHTML = '';
+
+    if (onHoldQueue.length === 0) {
+      holdListElement.innerHTML = '<li style="background:none;">現在保留なし</li>';
+    } else {
+      onHoldQueue.forEach((item) => {
+        const li = document.createElement('li');
+        li.style.backgroundColor = '#ffffff';
+        li.innerHTML = `
+          <span>${item.name} 様 （${item.count}名）</span>
+          <div>
+            <button class="btn-restore" onclick="restoreCustomer('${item.id}', '${item.name}')">戻す</button>
+            <button class="btn-cancel" onclick="cancelCustomer('${item.id}', '${item.name}')">取消</button>
+          </div>
+        `;
+        holdListElement.appendChild(li);
+      });
+    }
   }
 </script>
 </body>
