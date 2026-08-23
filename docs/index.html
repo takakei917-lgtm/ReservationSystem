@@ -3,88 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>順番待ち受付システム</title>
+  <title>順番待ち受付システム (Firebase同期版)</title>
   <style>
-    :root {
-      --primary: #1e3a8a;
-      --bg: #f8fafc;
-      --card-bg: #ffffff;
-      --text: #0f172a;
-    }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      margin: 0;
-      padding: 20px;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    h1, h2 {
-      text-align: center;
-      color: var(--primary);
-    }
-    .card {
-      background: var(--card-bg);
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
-    }
-    .input-group {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 15px;
-    }
-    input[type="text"], input[type="number"] {
-      flex: 1;
-      padding: 10px;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      font-size: 16px;
-    }
-    button {
-      padding: 10px 16px;
-      background-color: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 16px;
-      font-weight: bold;
-    }
-    button.btn-danger {
-      background-color: #dc2626;
-    }
-    .status-box {
-      text-align: center;
-      padding: 15px;
-      background-color: #eff6ff;
-      border-radius: 8px;
-    }
-    .status-number {
-      font-size: 36px;
-      font-weight: bold;
-      color: var(--primary);
-    }
-    ul {
-      list-style: none;
-      padding: 0;
-    }
-    li {
-      padding: 12px;
-      border-bottom: 1px solid #e2e8f0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    li:first-child {
-      font-weight: bold;
-      background-color: #f1f5f9;
-      border-radius: 6px;
-    }
+    :root { --primary: #1e3a8a; --bg: #f8fafc; --card-bg: #ffffff; --text: #0f172a; }
+    body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; }
+    h1, h2 { text-align: center; color: var(--primary); }
+    .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
+    input[type="text"], input[type="number"] { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; }
+    button { padding: 10px 16px; background-color: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
+    button.btn-danger { background-color: #dc2626; }
+    .status-box { text-align: center; padding: 15px; background-color: #eff6ff; border-radius: 8px; }
+    .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
+    ul { list-style: none; padding: 0; }
+    li { padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+    li:first-child { font-weight: bold; background-color: #f1f5f9; border-radius: 6px; }
   </style>
 </head>
 <body>
@@ -116,7 +50,7 @@
     <h2>【店員用】管理画面</h2>
     <div class="input-group">
       <label style="line-height: 40px;">1人あたりの目安時間(分):</label>
-      <input type="number" id="timePerPerson" value="20" min="1" style="max-width: 80px;" onchange="updateUI()">
+      <input type="number" id="timePerPerson" value="20" min="1" style="max-width: 80px;" onchange="updateSettings()">
     </div>
     <button class="btn-danger" style="width: 100%; margin-bottom: 15px;" onclick="nextCustomer()">1人施術完了（先頭を消去）</button>
     
@@ -125,67 +59,100 @@
   </div>
 </div>
 
-<script>
-  // ローカルストレージからデータを読み込み、無ければ初期化
-  let queue = JSON.parse(localStorage.getItem('barberQueue')) || [];
+<!-- Firebase SDKの読み込み -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue, remove, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-  function saveData() {
-    localStorage.setItem('barberQueue', JSON.stringify(queue));
-  }
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBa1DxQOAAaPp6TZunW5XyX2iE95AQWYZc",
+    authDomain: "reservationsystem-a3e8d.firebaseapp.com",
+    databaseURL: "https://reservationsystem-a3e8d-default-rtdb.firebaseio.com",
+    projectId: "reservationsystem-a3e8d",
+    storageBucket: "reservationsystem-a3e8d.firebasestorage.app",
+    messagingSenderId: "362167708528",
+    appId: "1:362167708528:web:b0fdbfca090f0b83eb7db5",
+     measurementId: "G-FREYRL5GKT"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const queueRef = ref(db, 'queue');
+  const settingsRef = ref(db, 'settings/timePerPerson');
+
+  let currentQueue = [];
+  let timePerPerson = 20;
+
+  // 1. リアルタイムデータ監視（待ちリスト）
+  onValue(queueRef, (snapshot) => {
+    const data = snapshot.val();
+    currentQueue = [];
+    if (data) {
+      // Firebaseオブジェクトを配列に変換
+      Object.keys(data).forEach(key => {
+        currentQueue.push({ id: key, name: data[key].name });
+      });
+    }
+    render();
+  });
+
+  // 2. リアルタイムデータ監視（設定時間）
+  onValue(settingsRef, (snapshot) => {
+    if (snapshot.exists()) {
+      timePerPerson = snapshot.val();
+      document.getElementById('timePerPerson').value = timePerPerson;
+      render();
+    }
+  });
 
   // 順番登録
-  function registerName() {
+  window.registerName = () => {
     const input = document.getElementById('userName');
     const name = input.value.trim();
-    if (!name) {
-      alert('お名前を入力してください');
-      return;
-    }
-    queue.push(name);
+    if (!name) return alert('お名前を入力してください');
+
+    push(queueRef, {
+      name: name,
+      createdAt: serverTimestamp()
+    });
     input.value = '';
-    saveData();
-    updateUI();
-  }
+  };
 
-  // 先頭の1人を完了処理
-  function nextCustomer() {
-    if (queue.length === 0) {
-      alert('待っているお客様はいません');
-      return;
-    }
-    const finishedUser = queue.shift();
-    alert(`${finishedUser} さんの案内・施術完了`);
-    saveData();
-    updateUI();
-  }
+  // 先頭の消去処理
+  window.nextCustomer = () => {
+    if (currentQueue.length === 0) return alert('待っているお客様はいません');
+    const firstPerson = currentQueue[0];
+    remove(ref(db, `queue/${firstPerson.id}`));
+  };
 
-  // 画面の更新処理
-  function updateUI() {
-    const timePerPerson = parseInt(document.getElementById('timePerPerson').value) || 20;
-    
-    // 待ち人数と予想時間の更新
-    document.getElementById('totalWaiting').textContent = `${queue.length} 人`;
-    document.getElementById('estimatedTime').textContent = queue.length * timePerPerson;
+  // 設定時間の変更保存
+  window.updateSettings = () => {
+    const val = parseInt(document.getElementById('timePerPerson').value) || 20;
+    set(settingsRef, val);
+  };
 
-    // リストの描画
+  // 画面の更新
+  function render() {
+    document.getElementById('totalWaiting').textContent = `${currentQueue.length} 人`;
+    document.getElementById('estimatedTime').textContent = currentQueue.length * timePerPerson;
+
     const listElement = document.getElementById('waitingList');
     listElement.innerHTML = '';
-    
-    if (queue.length === 0) {
+
+    if (currentQueue.length === 0) {
       listElement.innerHTML = '<li>現在待ちなし</li>';
       return;
     }
 
-    queue.forEach((name, index) => {
+    currentQueue.forEach((item, index) => {
       const li = document.createElement('li');
       const waitMinutes = index * timePerPerson;
-      li.textContent = `${index + 1}番目: ${name} 様 （あと約 ${waitMinutes} 分）`;
+      li.textContent = `${index + 1}番目: ${item.name} 様 （あと約 ${waitMinutes} 分）`;
       listElement.appendChild(li);
     });
   }
-
-  // 初期描画
-  updateUI();
 </script>
 
 </body>
