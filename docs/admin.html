@@ -10,8 +10,8 @@
     .container { max-width: 600px; margin: 0 auto; }
     h1, h2 { text-align: center; color: #dc2626; }
     .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    .input-group { display: flex; gap: 10px; margin-bottom: 15px; }
-    input[type="number"] { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; }
+    .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    input[type="number"] { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; width: 70px; }
     button { padding: 10px 16px; background-color: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
     .btn-main { width: 100%; padding: 15px; font-size: 18px; margin-top: 10px; }
     .btn-cancel { background-color: #64748b; padding: 6px 12px; font-size: 12px; }
@@ -26,11 +26,24 @@
   <h1>🔒 【店員専用】管理画面</h1>
 
   <div class="card">
-    <div class="input-group">
-      <label style="line-height: 40px;">1人あたりの目安時間(分):</label>
-      <input type="number" id="timePerPerson" value="20" min="1" style="max-width: 80px;" onchange="updateSettings()">
+    <h2>システム設定</h2>
+    <div class="setting-row">
+      <label>1人あたりの目安時間:</label>
+      <div><input type="number" id="timePerPerson" value="20" min="1"> 分</div>
     </div>
-    
+    <div class="setting-row">
+      <label>ネット受付 開始時間:</label>
+      <div><input type="number" id="startHour" value="10" min="0" max="23"> 時</div>
+    </div>
+    <div class="setting-row">
+      <label>ネット受付 終了時間:</label>
+      <div><input type="number" id="endHour" value="17" min="0" max="24"> 時</div>
+    </div>
+    <button style="width: 100%; background-color: #2563eb; margin-top: 5px;" onclick="saveSettings()">設定を保存</button>
+  </div>
+
+  <div class="card">
+    <h2>案内操作</h2>
     <button class="btn-main" onclick="nextCustomer()">1人 施術完了（先頭を減算/削除）</button>
   </div>
 
@@ -60,7 +73,7 @@
   const db = getDatabase(app);
 
   const queueRef = ref(db, 'queue');
-  const settingsRef = ref(db, 'settings/timePerPerson');
+  const settingsRef = ref(db, 'settings');
 
   let currentQueue = [];
 
@@ -77,9 +90,25 @@
 
   onValue(settingsRef, (snapshot) => {
     if (snapshot.exists()) {
-      document.getElementById('timePerPerson').value = snapshot.val();
+      const data = snapshot.val();
+      if (data.timePerPerson) document.getElementById('timePerPerson').value = data.timePerPerson;
+      if (data.startHour !== undefined) document.getElementById('startHour').value = data.startHour;
+      if (data.endHour !== undefined) document.getElementById('endHour').value = data.endHour;
     }
   });
+
+  window.saveSettings = () => {
+    const timeVal = parseInt(document.getElementById('timePerPerson').value) || 20;
+    const startVal = parseInt(document.getElementById('startHour').value) || 10;
+    const endVal = parseInt(document.getElementById('endHour').value) || 17;
+
+    set(settingsRef, {
+      timePerPerson: timeVal,
+      startHour: startVal,
+      endHour: endVal
+    });
+    alert('設定を保存しました');
+  };
 
   window.nextCustomer = () => {
     if (currentQueue.length === 0) return alert('待っているお客様はいません');
@@ -92,16 +121,10 @@
     }
   };
 
-  // 個別キャンセル処理
   window.cancelCustomer = (id, name) => {
     if (confirm(`${name} 様の予約をキャンセル（削除）しますか？`)) {
       remove(ref(db, `queue/${id}`));
     }
-  };
-
-  window.updateSettings = () => {
-    const val = parseInt(document.getElementById('timePerPerson').value) || 20;
-    set(settingsRef, val);
   };
 
   function render() {
