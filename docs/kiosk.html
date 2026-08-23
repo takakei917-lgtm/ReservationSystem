@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>【店頭用】順番待ち受付</title>
+  <style>
+    :root { --primary: #059669; --bg: #f0fdf4; --card-bg: #ffffff; --text: #0f172a; }
+    body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; }
+    h1, h2 { text-align: center; color: var(--primary); }
+    .card { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .input-group { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+    input[type="text"], input[type="number"] { padding: 12px; border: 2px solid #a7f3d0; border-radius: 8px; font-size: 18px; }
+    .input-name { flex: 2; min-width: 150px; }
+    .input-count { flex: 1; min-width: 80px; }
+    button { width: 100%; padding: 15px; background-color: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 20px; font-weight: bold; margin-top: 10px; }
+    .status-box { text-align: center; padding: 15px; background-color: #d1fae5; border-radius: 8px; }
+    .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
+    ul { list-style: none; padding: 0; }
+    li { padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+    li.next-item { font-weight: bold; background-color: #ecfdf5; border-radius: 6px; border-left: 5px solid var(--primary); }
+    .badge-next { background-color: var(--primary); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🏪 店頭受付（順番待ち登録）</h1>
+
+  <!-- 受付フォーム（時間制限なし） -->
+  <div class="card">
+    <h2>お名前と人数を入力してください</h2>
+    <div class="input-group">
+      <input type="text" id="userName" class="input-name" placeholder="お名前">
+      <input type="number" id="userCount" class="input-count" value="1" min="1" placeholder="人数">
+    </div>
+    <button onclick="registerName()">受付する</button>
+  </div>
+
+  <!-- 現在の全体状況 -->
+  <div class="card">
+    <h2>現在の案内状況</h2>
+    <div class="status-box">
+      <div>現在の待ち人数</div>
+      <div class="status-number" id="totalWaiting">0 組 (0 人)</div>
+      <div>全体の残り予想時間: 約 <span id="estimatedTime" style="font-weight: bold;">0</span> 分</div>
+    </div>
+    
+    <h3>現在の待ちリスト</h3>
+    <ul id="waitingList"></ul>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+  // ★ご自身のFirebase設定情報★
+  const firebaseConfig = {
+    apiKey: "AIzaSyBa1DxQOAAaPp6TZunW5XyX2iE95AQWYZc",
+  authDomain: "reservationsystem-a3e8d.firebaseapp.com",
+  databaseURL: "https://reservationsystem-a3e8d-default-rtdb.firebaseio.com",
+  projectId: "reservationsystem-a3e8d",
+  storageBucket: "reservationsystem-a3e8d.firebasestorage.app",
+  messagingSenderId: "362167708528",
+  appId: "1:362167708528:web:b0fdbfca090f0b83eb7db5",
+  measurementId: "G-FREYRL5GKT"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  const queueRef = ref(db, 'queue');
+  const settingsRef = ref(db, 'settings/timePerPerson');
+
+  let currentQueue = [];
+  let timePerPerson = 20;
+
+  onValue(queueRef, (snapshot) => {
+    const data = snapshot.val();
+    currentQueue = [];
+    if (data) {
+      Object.keys(data).forEach(key => {
+        currentQueue.push({ id: key, name: data[key].name, count: data[key].count || 1 });
+      });
+    }
+    render();
+  });
+
+  onValue(settingsRef, (snapshot) => {
+    if (snapshot.exists()) {
+      timePerPerson = snapshot.val();
+      render();
+    }
+  });
+
+  window.registerName = () => {
+    const nameInput = document.getElementById('userName');
+    const countInput = document.getElementById('userCount');
+    const name = nameInput.value.trim();
+    const count = parseInt(countInput.value) || 1;
+
+    if (!name) return alert('お名前を入力してください');
+
+    push(queueRef, { name: name, count: count, createdAt: serverTimestamp() });
+    nameInput.value = '';
+    countInput.value = '1';
+    alert('受付が完了しました！');
+  };
+
+  function render() {
+    const totalGroups = currentQueue.length;
+    const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0);
+
+    document.getElementById('totalWaiting').textContent = `${totalGroups} 組 (${totalPeople} 人)`;
+    document.getElementById('estimatedTime').textContent = totalPeople * timePerPerson;
+
+    const listElement = document.getElementById('waitingList');
+    listElement.innerHTML = '';
+
+    if (currentQueue.length === 0) {
+      listElement.innerHTML = '<li>現在待ちなし</li>';
+      return;
+    }
+
+    let accumulatedPeople = 0;
+    currentQueue.forEach((item, index) => {
+      const li = document.createElement('li');
+      if (index === 0) {
+        li.classList.add('next-item');
+        li.innerHTML = `<span><span class="badge-next">NEXT</span> 1番目: ${item.name} 様 (${item.count}名)</span><span style="color: #059669;">[およそ ${timePerPerson} 分以内]</span>`;
+      } else {
+        const waitMinutes = accumulatedPeople * timePerPerson;
+        li.textContent = `${index + 1}番目: ${item.name} 様 (${item.count}名) （あと約 ${waitMinutes} 分）`;
+      }
+      listElement.appendChild(li);
+      accumulatedPeople += item.count;
+    });
+  }
+</script>
+</body>
+</html>
