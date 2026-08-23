@@ -20,7 +20,6 @@
     ul { list-style: none; padding: 0; }
     li { padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
     li:first-child { font-weight: bold; background-color: #fee2e2; border-radius: 6px; }
-    
     .hold-card { border: 2px dashed #f59e0b; background-color: #fffbeeb0; }
   </style>
 </head>
@@ -34,6 +33,10 @@
     <div class="setting-row">
       <label>1人あたりの目安時間:</label>
       <div><input type="number" id="timePerPerson" value="20" min="1"> 分</div>
+    </div>
+    <div class="setting-row">
+      <label>受付上限（最大人数）:</label>
+      <div><input type="number" id="maxPeopleLimit" value="50" min="1"> 人</div>
     </div>
     <div class="setting-row">
       <label>ネット受付 開始時間:</label>
@@ -109,6 +112,7 @@
     if (snapshot.exists()) {
       const data = snapshot.val();
       if (data.timePerPerson) document.getElementById('timePerPerson').value = data.timePerPerson;
+      if (data.maxPeopleLimit !== undefined) document.getElementById('maxPeopleLimit').value = data.maxPeopleLimit;
       if (data.startHour !== undefined) document.getElementById('startHour').value = data.startHour;
       if (data.endHour !== undefined) document.getElementById('endHour').value = data.endHour;
     }
@@ -116,11 +120,13 @@
 
   window.saveSettings = () => {
     const timeVal = parseInt(document.getElementById('timePerPerson').value) || 20;
+    const limitVal = parseInt(document.getElementById('maxPeopleLimit').value) || 50;
     const startVal = parseInt(document.getElementById('startHour').value) || 10;
     const endVal = parseInt(document.getElementById('endHour').value) || 17;
 
     set(settingsRef, {
       timePerPerson: timeVal,
+      maxPeopleLimit: limitVal,
       startHour: startVal,
       endHour: endVal
     });
@@ -138,14 +144,12 @@
     }
   };
 
-  // 保留にする
   window.holdCustomer = (id, name) => {
     if (confirm(`${name} 様を保留にしますか？`)) {
       update(ref(db, `queue/${id}`), { status: 'hold' });
     }
   };
 
-  // 保留から通常並びの最後尾へ復帰
   window.restoreCustomer = (id, name) => {
     if (confirm(`${name} 様を通常の待ち列（最後尾）へ戻しますか？`)) {
       update(ref(db, `queue/${id}`), { status: 'waiting', createdAt: serverTimestamp() });
@@ -159,7 +163,6 @@
   };
 
   function render() {
-    // 通常リスト
     const listElement = document.getElementById('waitingList');
     listElement.innerHTML = '';
 
@@ -179,7 +182,6 @@
       });
     }
 
-    // 保留リスト
     const holdListElement = document.getElementById('holdList');
     holdListElement.innerHTML = '';
 
