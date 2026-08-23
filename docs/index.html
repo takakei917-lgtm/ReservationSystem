@@ -37,7 +37,8 @@
   <div class="card">
     <h2>受付（順番待ち登録）</h2>
     <p style="text-align: center; font-size: 14px; color: #64748b; margin-top: -10px;">
-      ネット受付時間: <b id="onlineTimeDisplay">--:-- ～ --:--</b>
+      ネット受付時間: <b id="onlineTimeDisplay">--:-- ～ --:--</b><br>
+      <span style="font-size: 12px;">（店舗営業終了: <b id="shopEndDisplay">--:--</b>）</span>
     </p>
     
     <div id="formContainer" class="input-group" style="display: none;">
@@ -55,7 +56,7 @@
     <!-- 2. ネット受付時間外（営業時間内） -->
     <div id="timeNotice" class="time-notice" style="display: none;">
       現在オンライン受付時間外です。<br>
-      （※店頭での直接受付は行っております）
+      （※本日の店舗営業終了時間 <b><span id="shopEndNoticeDisplay">--:--</span></b> まで店頭での直接受付を行っております）
     </div>
 
     <!-- 3. 上限人数到達 -->
@@ -126,7 +127,9 @@
     const currentHour = now.getHours();
 
     document.getElementById('onlineTimeDisplay').textContent = `${startHour}:00 ～ ${endHour}:00`;
+    document.getElementById('shopEndDisplay').textContent = `${shopEndHour}:00`;
     document.getElementById('shopHoursDisplay').textContent = `${shopStartHour}:00 ～ ${shopEndHour}:00`;
+    document.getElementById('shopEndNoticeDisplay').textContent = `${shopEndHour}:00`;
     document.getElementById('maxLimitDisplay').textContent = maxPeopleLimit;
 
     const formEl = document.getElementById('formContainer');
@@ -141,7 +144,6 @@
     const isOnlineOpen = (currentHour >= startHour && currentHour < endHour);
     const isUnderLimit = (totalPeople < maxPeopleLimit);
 
-    // 全て閉じる処理
     formEl.style.display = 'none';
     closedEl.style.display = 'none';
     noticeEl.style.display = 'none';
