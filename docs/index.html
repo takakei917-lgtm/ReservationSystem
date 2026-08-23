@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>順番待ち受付システム (人数対応版)</title>
+  <title>順番待ち受付システム</title>
   <style>
     :root { --primary: #1e3a8a; --bg: #f8fafc; --card-bg: #ffffff; --text: #0f172a; }
     body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
@@ -20,7 +20,8 @@
     .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
     ul { list-style: none; padding: 0; }
     li { padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-    li:first-child { font-weight: bold; background-color: #f1f5f9; border-radius: 6px; }
+    li.next-item { font-weight: bold; background-color: #f1f5f9; border-radius: 6px; border-left: 5px solid var(--primary); }
+    .badge-next { background-color: #2563eb; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
   </style>
 </head>
 <body>
@@ -44,7 +45,7 @@
     <div class="status-box">
       <div>現在の待ち人数</div>
       <div class="status-number" id="totalWaiting">0 組 (0 人)</div>
-      <div>およその待ち時間: <span id="estimatedTime" style="font-weight: bold;">0</span> 分</div>
+      <div>全体の残り予想時間: 約 <span id="estimatedTime" style="font-weight: bold;">0</span> 分</div>
     </div>
   </div>
 
@@ -55,7 +56,7 @@
       <label style="line-height: 40px;">1人あたりの目安時間(分):</label>
       <input type="number" id="timePerPerson" value="20" min="1" style="max-width: 80px;" onchange="updateSettings()">
     </div>
-    <button class="btn-danger" style="width: 100%; margin-bottom: 15px;" onclick="nextCustomer()">1組 施術完了（先頭を消去）</button>
+    <button class="btn-danger" style="width: 100%; margin-bottom: 15px;" onclick="nextCustomer()">1人 施術完了（先頭の人数-1）</button>
     
     <h3>現在の待ちリスト</h3>
     <ul id="waitingList"></ul>
@@ -65,7 +66,7 @@
 <!-- Firebase SDKの読み込み -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getDatabase, ref, push, onValue, remove, set, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  import { getDatabase, ref, push, onValue, remove, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
   // ★ご自身のFirebase設定情報に書き換えてください★
   const firebaseConfig = {
@@ -133,11 +134,21 @@
     countInput.value = '1';
   };
 
-  // 先頭の消去処理
+  // 1人分施術完了（人数減算・削除）
   window.nextCustomer = () => {
     if (currentQueue.length === 0) return alert('待っているお客様はいません');
+    
     const firstPerson = currentQueue[0];
-    remove(ref(db, `queue/${firstPerson.id}`));
+
+    if (firstPerson.count > 1) {
+      // 2人以上の場合は人数を -1 する
+      update(ref(db, `queue/${firstPerson.id}`), {
+        count: firstPerson.count - 1
+      });
+    } else {
+      // 1人の場合はリストから消去する
+      remove(ref(db, `queue/${firstPerson.id}`));
+    }
   };
 
   // 設定時間の変更保存
@@ -148,12 +159,10 @@
 
   // 画面の更新
   function render() {
-    // 全体の「組数」と「合計人数」を計算
     const totalGroups = currentQueue.length;
     const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0);
 
     document.getElementById('totalWaiting').textContent = `${totalGroups} 組 (${totalPeople} 人)`;
-    // 待ち時間＝「全体の合計人数 × 1人あたりの目安時間」
     document.getElementById('estimatedTime').textContent = totalPeople * timePerPerson;
 
     const listElement = document.getElementById('waitingList');
@@ -164,15 +173,25 @@
       return;
     }
 
-    // 各グループの「自分の前までの合計人数」を算出して個別の待ち時間を出す
     let accumulatedPeople = 0;
     currentQueue.forEach((item, index) => {
       const li = document.createElement('li');
-      const waitMinutes = accumulatedPeople * timePerPerson;
-      
-      li.textContent = `${index + 1}番目: ${item.name} 様 (${item.count}名) （あと約 ${waitMinutes} 分）`;
-      listElement.appendChild(li);
 
+      if (index === 0) {
+        // 先頭（次の案内対象）の人
+        li.classList.add('next-item');
+        const maxWait = item.count * timePerPerson;
+        li.innerHTML = `
+          <span><span class="badge-next">NEXT</span> 1番目: ${item.name} 様 (${item.count}名)</span>
+          <span style="color: #2563eb;">[およそ ${maxWait} 分以内]</span>
+        `;
+      } else {
+        // 2番目以降の人
+        const waitMinutes = accumulatedPeople * timePerPerson;
+        li.textContent = `${index + 1}番目: ${item.name} 様 (${item.count}名) （あと約 ${waitMinutes} 分）`;
+      }
+
+      listElement.appendChild(li);
       accumulatedPeople += item.count;
     });
   }
