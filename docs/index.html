@@ -18,13 +18,12 @@
     .status-box { text-align: center; padding: 15px; background-color: #eff6ff; border-radius: 8px; }
     .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
     .time-notice { background-color: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; }
+    .limit-notice { background-color: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; }
     .call-notice { background-color: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; padding: 12px; border-radius: 8px; font-size: 13px; line-height: 1.5; margin-top: 15px; }
     ul { list-style: none; padding: 0; }
     li { padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
     li.next-item { font-weight: bold; background-color: #f1f5f9; border-radius: 6px; border-left: 5px solid var(--primary); }
     .badge-next { background-color: #2563eb; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
-    
-    /* 保留リスト専用スタイル */
     .hold-card { border: 1px solid #fed7aa; background-color: #fff7ed; }
     .hold-badge { background-color: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
   </style>
@@ -46,9 +45,13 @@
       <button onclick="registerName()">登録</button>
     </div>
 
-    <div id="timeNotice" class="time-notice">
+    <div id="timeNotice" class="time-notice" style="display: none;">
       現在オンライン受付時間外です。<br>
       （※店頭での直接受付は行っております）
+    </div>
+
+    <div id="limitNotice" class="limit-notice" style="display: none;">
+      本日のオンライン受付は上限人数（<span id="maxLimitDisplay">50</span>名）に達したため終了いたしました。
     </div>
 
     <div class="call-notice">
@@ -71,7 +74,6 @@
     <ul id="waitingList"></ul>
   </div>
 
-  <!-- 保留中の表示エリア -->
   <div class="card hold-card" id="holdCard" style="display: none;">
     <h3 style="margin-top: 0; color: #c2410c;">⏳ 保留・ご不在のお客様</h3>
     <p style="font-size: 12px; color: #9a3412; margin-top: -5px;">お呼び出し時にお控えになられなかったお客様です。ご来店の際はお声がけください。</p>
@@ -106,24 +108,41 @@
   let timePerPerson = 20;
   let startHour = 10;
   let endHour = 17;
+  let maxPeopleLimit = 50; // デフォルト50人上限
 
-  function checkOnlineTime() {
+  function checkOnlineTimeAndLimit() {
     const now = new Date();
     const currentHour = now.getHours();
 
     document.getElementById('onlineTimeDisplay').textContent = `${startHour}:00 ～ ${endHour}:00`;
+    document.getElementById('maxLimitDisplay').textContent = maxPeopleLimit;
 
     const formEl = document.getElementById('formContainer');
     const noticeEl = document.getElementById('timeNotice');
+    const limitEl = document.getElementById('limitNotice');
 
-    if (currentHour >= startHour && currentHour < endHour) {
-      formEl.style.display = 'flex';
-      noticeEl.style.display = 'none';
-      return true;
-    } else {
+    // ★合計人数を計算（待ち列 ＋ 保留中）★
+    const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0) + 
+                        onHoldQueue.reduce((sum, item) => sum + item.count, 0);
+
+    const isWithinTime = (currentHour >= startHour && currentHour < endHour);
+    const isUnderLimit = (totalPeople < maxPeopleLimit);
+
+    if (!isWithinTime) {
       formEl.style.display = 'none';
       noticeEl.style.display = 'block';
+      limitEl.style.display = 'none';
       return false;
+    } else if (!isUnderLimit) {
+      formEl.style.display = 'none';
+      noticeEl.style.display = 'none';
+      limitEl.style.display = 'block';
+      return false;
+    } else {
+      formEl.style.display = 'flex';
+      noticeEl.style.display = 'none';
+      limitEl.style.display = 'none';
+      return true;
     }
   }
 
@@ -151,12 +170,13 @@
       if (data.timePerPerson) timePerPerson = data.timePerPerson;
       if (data.startHour !== undefined) startHour = data.startHour;
       if (data.endHour !== undefined) endHour = data.endHour;
+      if (data.maxPeopleLimit !== undefined) maxPeopleLimit = data.maxPeopleLimit;
       render();
     }
   });
 
   window.registerName = () => {
-    if (!checkOnlineTime()) return alert('現在オンライン受付の時間外です');
+    if (!checkOnlineTimeAndLimit()) return alert('現在受付を終了しております');
 
     const nameInput = document.getElementById('userName');
     const countInput = document.getElementById('userCount');
@@ -165,6 +185,13 @@
 
     if (!name) return alert('お名前を入力してください');
 
+    // 登録時の人数を加算しても上限を超えないか確認
+    const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0) + 
+                        onHoldQueue.reduce((sum, item) => sum + item.count, 0);
+    if (totalPeople + count > maxPeopleLimit) {
+      return alert(`上限人数（${maxPeopleLimit}名）を超えるため登録できません。`);
+    }
+
     push(queueRef, { name: name, count: count, status: 'waiting', createdAt: serverTimestamp() });
     nameInput.value = '';
     countInput.value = '1';
@@ -172,7 +199,7 @@
   };
 
   function render() {
-    checkOnlineTime();
+    checkOnlineTimeAndLimit();
 
     const totalGroups = currentQueue.length;
     const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0);
@@ -180,7 +207,6 @@
     document.getElementById('totalWaiting').textContent = `${totalGroups} 組 (${totalPeople} 人)`;
     document.getElementById('estimatedTime').textContent = totalPeople * timePerPerson;
 
-    // 通常の待ちリスト
     const listElement = document.getElementById('waitingList');
     listElement.innerHTML = '';
 
@@ -202,7 +228,6 @@
       });
     }
 
-    // 保留リストの描画
     const holdCard = document.getElementById('holdCard');
     const holdListElement = document.getElementById('holdList');
     holdListElement.innerHTML = '';
