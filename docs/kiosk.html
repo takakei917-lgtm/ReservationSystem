@@ -19,6 +19,7 @@
     .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
     .cancel-notice { font-size: 14px; color: #475569; text-align: center; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #a7f3d0; font-weight: bold; }
     .limit-notice { background-color: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; }
+    .closed-notice { background-color: #f3f4f6; border: 1px solid #9ca3af; color: #374151; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; }
     ul { list-style: none; padding: 0; }
     li { padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
     li.next-item { font-weight: bold; background-color: #ecfdf5; border-radius: 6px; border-left: 5px solid var(--primary); }
@@ -35,6 +36,10 @@
   <div class="card">
     <h2>お名前と人数を入力してください</h2>
     
+    <div id="closedNotice" class="closed-notice" style="display: none;">
+      本日の営業・受付はすべて終了いたしました。
+    </div>
+
     <div id="limitNotice" class="limit-notice" style="display: none;">
       受付上限人数（<span id="maxLimitDisplay">50</span>名）に達したため、本日の受付は終了いたしました。
     </div>
@@ -96,25 +101,37 @@
   let currentQueue = [];
   let onHoldQueue = [];
   let timePerPerson = 20;
+  let shopStartHour = 9;
+  let shopEndHour = 18;
   let maxPeopleLimit = 50;
 
   function checkLimit() {
+    const now = new Date();
+    const currentHour = now.getHours();
+
     document.getElementById('maxLimitDisplay').textContent = maxPeopleLimit;
 
     const formEl = document.getElementById('formContainer');
+    const closedEl = document.getElementById('closedNotice');
     const limitEl = document.getElementById('limitNotice');
     
-    // ★合計人数を計算★
     const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0) + 
                         onHoldQueue.reduce((sum, item) => sum + item.count, 0);
 
-    if (totalPeople >= maxPeopleLimit) {
-      formEl.style.display = 'none';
+    const isShopOpen = (currentHour >= shopStartHour && currentHour < shopEndHour);
+
+    formEl.style.display = 'none';
+    closedEl.style.display = 'none';
+    limitEl.style.display = 'none';
+
+    if (!isShopOpen) {
+      closedEl.style.display = 'block';
+      return false;
+    } else if (totalPeople >= maxPeopleLimit) {
       limitEl.style.display = 'block';
       return false;
     } else {
       formEl.style.display = 'block';
-      limitEl.style.display = 'none';
       return true;
     }
   }
@@ -141,13 +158,15 @@
     if (snapshot.exists()) {
       const data = snapshot.val();
       if (data.timePerPerson) timePerPerson = data.timePerPerson;
+      if (data.shopStartHour !== undefined) shopStartHour = data.shopStartHour;
+      if (data.shopEndHour !== undefined) shopEndHour = data.shopEndHour;
       if (data.maxPeopleLimit !== undefined) maxPeopleLimit = data.maxPeopleLimit;
       render();
     }
   });
 
   window.registerName = () => {
-    if (!checkLimit()) return alert('受付上限人数に達しております');
+    if (!checkLimit()) return alert('現在受付を行っておりません');
 
     const nameInput = document.getElementById('userName');
     const countInput = document.getElementById('userCount');
