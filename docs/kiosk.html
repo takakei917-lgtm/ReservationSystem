@@ -22,6 +22,10 @@
     li { padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
     li.next-item { font-weight: bold; background-color: #ecfdf5; border-radius: 6px; border-left: 5px solid var(--primary); }
     .badge-next { background-color: var(--primary); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
+
+    /* 保留リスト専用スタイル */
+    .hold-card { border: 1px solid #fed7aa; background-color: #fff7ed; }
+    .hold-badge { background-color: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
   </style>
 </head>
 <body>
@@ -53,6 +57,12 @@
     <h3>現在の待ちリスト</h3>
     <ul id="waitingList"></ul>
   </div>
+
+  <div class="card hold-card" id="holdCard" style="display: none;">
+    <h3 style="margin-top: 0; color: #c2410c;">⏳ 保留・ご不在のお客様</h3>
+    <p style="font-size: 12px; color: #9a3412; margin-top: -5px;">お呼び出し時にお控えになられなかったお客様です。ご来店の際はお声がけください。</p>
+    <ul id="holdList"></ul>
+  </div>
 </div>
 
 <script type="module">
@@ -78,14 +88,22 @@
   const settingsRef = ref(db, 'settings/timePerPerson');
 
   let currentQueue = [];
+  let onHoldQueue = [];
   let timePerPerson = 20;
 
   onValue(queueRef, (snapshot) => {
     const data = snapshot.val();
     currentQueue = [];
+    onHoldQueue = [];
+
     if (data) {
       Object.keys(data).forEach(key => {
-        currentQueue.push({ id: key, name: data[key].name, count: data[key].count || 1 });
+        const item = { id: key, name: data[key].name, count: data[key].count || 1, status: data[key].status || 'waiting' };
+        if (item.status === 'hold') {
+          onHoldQueue.push(item);
+        } else {
+          currentQueue.push(item);
+        }
       });
     }
     render();
@@ -106,7 +124,7 @@
 
     if (!name) return alert('お名前を入力してください');
 
-    push(queueRef, { name: name, count: count, createdAt: serverTimestamp() });
+    push(queueRef, { name: name, count: count, status: 'waiting', createdAt: serverTimestamp() });
     nameInput.value = '';
     countInput.value = '1';
     alert('受付が完了しました！');
@@ -124,22 +142,36 @@
 
     if (currentQueue.length === 0) {
       listElement.innerHTML = '<li>現在待ちなし</li>';
-      return;
+    } else {
+      let accumulatedPeople = 0;
+      currentQueue.forEach((item, index) => {
+        const li = document.createElement('li');
+        if (index === 0) {
+          li.classList.add('next-item');
+          li.innerHTML = `<span><span class="badge-next">NEXT</span> 1番目: ${item.name} 様 (${item.count}名)</span><span style="color: #059669;">[およそ ${timePerPerson} 分以内]</span>`;
+        } else {
+          const waitMinutes = accumulatedPeople * timePerPerson;
+          li.textContent = `${index + 1}番目: ${item.name} 様 (${item.count}名) （あと約 ${waitMinutes} 分）`;
+        }
+        listElement.appendChild(li);
+        accumulatedPeople += item.count;
+      });
     }
 
-    let accumulatedPeople = 0;
-    currentQueue.forEach((item, index) => {
-      const li = document.createElement('li');
-      if (index === 0) {
-        li.classList.add('next-item');
-        li.innerHTML = `<span><span class="badge-next">NEXT</span> 1番目: ${item.name} 様 (${item.count}名)</span><span style="color: #059669;">[およそ ${timePerPerson} 分以内]</span>`;
-      } else {
-        const waitMinutes = accumulatedPeople * timePerPerson;
-        li.textContent = `${index + 1}番目: ${item.name} 様 (${item.count}名) （あと約 ${waitMinutes} 分）`;
-      }
-      listElement.appendChild(li);
-      accumulatedPeople += item.count;
-    });
+    const holdCard = document.getElementById('holdCard');
+    const holdListElement = document.getElementById('holdList');
+    holdListElement.innerHTML = '';
+
+    if (onHoldQueue.length > 0) {
+      holdCard.style.display = 'block';
+      onHoldQueue.forEach((item) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span><span class="hold-badge">保留中</span> ${item.name} 様 (${item.count}名)</span>`;
+        holdListElement.appendChild(li);
+      });
+    } else {
+      holdCard.style.display = 'none';
+    }
   }
 </script>
 </body>
