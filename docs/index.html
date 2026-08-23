@@ -17,6 +17,7 @@
     button { padding: 10px 16px; background-color: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
     .status-box { text-align: center; padding: 15px; background-color: #eff6ff; border-radius: 8px; }
     .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
+    .time-notice { background-color: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; }
     ul { list-style: none; padding: 0; }
     li { padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
     li.next-item { font-weight: bold; background-color: #f1f5f9; border-radius: 6px; border-left: 5px solid var(--primary); }
@@ -28,13 +29,22 @@
 <div class="container">
   <h1>✂️ 床屋の順番待ち</h1>
 
-  <!-- お客様用：受付フォーム -->
+  <!-- お客様用：受付フォームエリア -->
   <div class="card">
     <h2>受付（順番待ち登録）</h2>
-    <div class="input-group">
+    
+    <!-- 時間内の場合に表示されるフォーム -->
+    <div id="formContainer" class="input-group">
       <input type="text" id="userName" class="input-name" placeholder="お名前">
       <input type="number" id="userCount" class="input-count" value="1" min="1" placeholder="人数">
       <button onclick="registerName()">登録</button>
+    </div>
+
+    <!-- 時間外の場合に表示されるメッセージ -->
+    <div id="timeNotice" class="time-notice" style="display: none;">
+      現在オンライン受付時間外です。<br>
+      オンライン受付時間: <span id="onlineTimeText"></span><br>
+      （※店頭での直接受付は行っております）
     </div>
   </div>
 
@@ -55,6 +65,10 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getDatabase, ref, push, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+  // ★1. ネット受付時間の制限設定（ここを変更してください）★
+  const START_HOUR = 10; // 開始時間（例: 10時）
+  const END_HOUR = 17;   // 終了時間（例: 17時まで）
 
   // ★ご自身のFirebase設定情報★
   const firebaseConfig = {
@@ -77,6 +91,27 @@
   let currentQueue = [];
   let timePerPerson = 20;
 
+  // 時間チェック処理
+  function checkOnlineTime() {
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    const formEl = document.getElementById('formContainer');
+    const noticeEl = document.getElementById('timeNotice');
+    document.getElementById('onlineTimeText').textContent = `${START_HOUR}:00 ～ ${END_HOUR}:00`;
+
+    // 設定時間内かどうか判定
+    if (currentHour >= START_HOUR && currentHour < END_HOUR) {
+      formEl.style.display = 'flex';
+      noticeEl.style.display = 'none';
+      return true;
+    } else {
+      formEl.style.display = 'none';
+      noticeEl.style.display = 'block';
+      return false;
+    }
+  }
+
   onValue(queueRef, (snapshot) => {
     const data = snapshot.val();
     currentQueue = [];
@@ -96,6 +131,10 @@
   });
 
   window.registerName = () => {
+    if (!checkOnlineTime()) {
+      return alert('現在オンライン受付の時間外です');
+    }
+
     const nameInput = document.getElementById('userName');
     const countInput = document.getElementById('userCount');
     const name = nameInput.value.trim();
@@ -110,6 +149,8 @@
   };
 
   function render() {
+    checkOnlineTime(); // 画面描写時にも時間チェック
+
     const totalGroups = currentQueue.length;
     const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0);
 
@@ -128,11 +169,9 @@
     currentQueue.forEach((item, index) => {
       const li = document.createElement('li');
       if (index === 0) {
-        // 先頭は人数の多さに関わらず「1人分の目安時間（20分）以内」と表示
         li.classList.add('next-item');
         li.innerHTML = `<span><span class="badge-next">NEXT</span> 1番目: ${item.name} 様 (${item.count}名)</span><span style="color: #2563eb;">[およそ ${timePerPerson} 分以内]</span>`;
       } else {
-        // 2番目以降は「これまでの累計人数 × 20分」で計算
         const waitMinutes = accumulatedPeople * timePerPerson;
         li.textContent = `${index + 1}番目: ${item.name} 様 (${item.count}名) （あと約 ${waitMinutes} 分）`;
       }
@@ -140,6 +179,9 @@
       accumulatedPeople += item.count;
     });
   }
+
+  // 初回読み込み時に時間判定を実行
+  checkOnlineTime();
 </script>
 </body>
 </html>
