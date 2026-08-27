@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>順番待ち受付システム</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     :root { --primary: #1e3a8a; --bg: #f8fafc; --card-bg: #ffffff; --text: #0f172a; }
     body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
@@ -32,7 +33,7 @@
 <body>
 
 <div class="container">
-  <h1>✂️ ヘアカット専門店ankh上石神井店の順番待ち</h1>
+  <h1>✂️ 床屋の順番待ち</h1>
 
   <div class="card">
     <h2>受付（順番待ち登録）</h2>
@@ -40,7 +41,7 @@
       ネット受付時間: <b id="onlineTimeDisplay">--:-- ～ --:--</b><br>
       <span style="font-size: 12px;">（店舗営業終了: <b id="shopEndDisplay">--:--</b>）</span>
     </p>
-    
+
     <div id="formContainer" class="input-group" style="display: none;">
       <input type="text" id="userName" class="input-name" placeholder="お名前">
       <input type="number" id="userCount" class="input-count" value="1" min="1" placeholder="人数">
@@ -95,16 +96,15 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getDatabase, ref, push, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-  // ★ご自身のFirebase設定情報★
   const firebaseConfig = {
     apiKey: "AIzaSyBa1DxQOAAaPp6TZunW5XyX2iE95AQWYZc",
-  authDomain: "reservationsystem-a3e8d.firebaseapp.com",
-  databaseURL: "https://reservationsystem-a3e8d-default-rtdb.firebaseio.com",
-  projectId: "reservationsystem-a3e8d",
-  storageBucket: "reservationsystem-a3e8d.firebasestorage.app",
-  messagingSenderId: "362167708528",
-  appId: "1:362167708528:web:b0fdbfca090f0b83eb7db5",
-  measurementId: "G-FREYRL5GKT"
+    authDomain: "reservationsystem-a3e8d.firebaseapp.com",
+    databaseURL: "https://reservationsystem-a3e8d-default-rtdb.firebaseio.com",
+    projectId: "reservationsystem-a3e8d",
+    storageBucket: "reservationsystem-a3e8d.firebasestorage.app",
+    messagingSenderId: "362167708528",
+    appId: "1:362167708528:web:b0fdbfca090f0b83eb7db5",
+    measurementId: "G-FREYRL5GKT"
   };
 
   const app = initializeApp(firebaseConfig);
@@ -116,10 +116,10 @@
   let currentQueue = [];
   let onHoldQueue = [];
   let timePerPerson = 20;
-  let shopStartHour = 9;   // 店舗開店時間
-  let shopEndHour = 18;    // 店舗閉店（最終受付）時間
-  let startHour = 10;      // ネット受付開始時間
-  let endHour = 17;        // ネット受付終了時間
+  let shopStartHour = 9;
+  let shopEndHour = 18;
+  let startHour = 10;
+  let endHour = 17;
   let maxPeopleLimit = 50;
 
   function checkOnlineTimeAndLimit() {
@@ -196,25 +196,29 @@
   });
 
   window.registerName = () => {
-    if (!checkOnlineTimeAndLimit()) return alert('現在受付を終了しております');
+    if (!checkOnlineTimeAndLimit()) {
+      return Swal.fire({ icon: 'error', title: '受付不可', text: '現在受付を終了しております' });
+    }
 
     const nameInput = document.getElementById('userName');
     const countInput = document.getElementById('userCount');
     const name = nameInput.value.trim();
     const count = parseInt(countInput.value) || 1;
 
-    if (!name) return alert('お名前を入力してください');
+    if (!name) {
+      return Swal.fire({ icon: 'warning', title: '入力エラー', text: 'お名前を入力してください' });
+    }
 
     const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0) + 
                         onHoldQueue.reduce((sum, item) => sum + item.count, 0);
     if (totalPeople + count > maxPeopleLimit) {
-      return alert(`上限人数（${maxPeopleLimit}名）を超えるため登録できません。`);
+      return Swal.fire({ icon: 'warning', title: '上限オーバー', text: `上限人数（${maxPeopleLimit}名）を超えるため登録できません。` });
     }
 
     push(queueRef, { name: name, count: count, status: 'waiting', createdAt: serverTimestamp() });
     nameInput.value = '';
     countInput.value = '1';
-    alert('登録が完了しました');
+    Swal.fire({ icon: 'success', title: '登録完了', text: '順番待ちの登録が完了しました！' });
   };
 
   function render() {
