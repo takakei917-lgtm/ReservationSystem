@@ -23,6 +23,21 @@
     li:first-child { font-weight: bold; background-color: #fee2e2; border-radius: 6px; }
     .hold-card { border: 2px dashed #f59e0b; background-color: #fffbeeb0; }
     .setting-card { border: 1px solid #cbd5e1; background-color: #f1f5f9; }
+    
+    /* 本日の施術人数表示用スタイル */
+    .daily-counter {
+      text-align: center;
+      background-color: #f1f5f9;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    .daily-counter span {
+      font-size: 24px;
+      font-weight: bold;
+      color: #dc2626;
+    }
   </style>
 </head>
 <body>
@@ -33,6 +48,12 @@
   <!-- 1. 案内操作 -->
   <div class="card">
     <h2>案内操作</h2>
+    
+    <!-- 追加: 本日の施術完了人数表示 -->
+    <div class="daily-counter">
+      本日の施術完了人数: <span id="todayCountDisplay">0</span> 人
+    </div>
+
     <button class="btn-main" onclick="nextCustomer()">1人 施術開始（先頭を減算/削除）</button>
   </div>
 
@@ -102,8 +123,28 @@
   const queueRef = ref(db, 'queue');
   const settingsRef = ref(db, 'settings');
 
+  // 本日の日付文字列を取得する関数 (YYYY-MM-DD形式)
+  const getTodayKey = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const todayKey = getTodayKey();
+  const todayStatsRef = ref(db, `dailyStats/${todayKey}`);
+
   let currentQueue = [];
   let onHoldQueue = [];
+  let todayCompletedCount = 0;
+
+  // 本日の施術人数のリアルタイム監視
+  onValue(todayStatsRef, (snapshot) => {
+    const data = snapshot.val();
+    todayCompletedCount = (data && data.completedCount) ? data.completedCount : 0;
+    document.getElementById('todayCountDisplay').textContent = todayCompletedCount;
+  });
 
   onValue(queueRef, (snapshot) => {
     const data = snapshot.val();
@@ -159,6 +200,11 @@
       return Swal.fire({ icon: 'info', title: 'お知らせ', text: '待っているお客様はいません' });
     }
     const firstPerson = currentQueue[0];
+
+    // 1人分案内したため、本日のカウントを1増やす
+    update(todayStatsRef, {
+      completedCount: todayCompletedCount + 1
+    });
 
     if (firstPerson.count > 1) {
       update(ref(db, `queue/${firstPerson.id}`), { count: firstPerson.count - 1 });
