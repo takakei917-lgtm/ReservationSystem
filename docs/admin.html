@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>【管理用】順番待ち管理</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     :root { --primary: #1e3a8a; --bg: #f8fafc; --card-bg: #ffffff; --text: #0f172a; }
     body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
@@ -47,7 +48,7 @@
     <ul id="holdList"></ul>
   </div>
 
-  <!-- 4. システム設定（一番下に移動） -->
+  <!-- 4. システム設定 -->
   <div class="card setting-card">
     <h2 style="color: #475569;">⚙️ システム設定</h2>
     <div class="setting-row">
@@ -84,16 +85,15 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getDatabase, ref, onValue, remove, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-  // ★ご自身のFirebase設定情報★
   const firebaseConfig = {
     apiKey: "AIzaSyBa1DxQOAAaPp6TZunW5XyX2iE95AQWYZc",
-  authDomain: "reservationsystem-a3e8d.firebaseapp.com",
-  databaseURL: "https://reservationsystem-a3e8d-default-rtdb.firebaseio.com",
-  projectId: "reservationsystem-a3e8d",
-  storageBucket: "reservationsystem-a3e8d.firebasestorage.app",
-  messagingSenderId: "362167708528",
-  appId: "1:362167708528:web:b0fdbfca090f0b83eb7db5",
-  measurementId: "G-FREYRL5GKT"
+    authDomain: "reservationsystem-a3e8d.firebaseapp.com",
+    databaseURL: "https://reservationsystem-a3e8d-default-rtdb.firebaseio.com",
+    projectId: "reservationsystem-a3e8d",
+    storageBucket: "reservationsystem-a3e8d.firebasestorage.app",
+    messagingSenderId: "362167708528",
+    appId: "1:362167708528:web:b0fdbfca090f0b83eb7db5",
+    measurementId: "G-FREYRL5GKT"
   };
 
   const app = initializeApp(firebaseConfig);
@@ -151,11 +151,13 @@
       startHour: startVal,
       endHour: endVal
     });
-    alert('設定を保存しました');
+    Swal.fire({ icon: 'success', title: '設定完了', text: '設定を保存しました', timer: 1500, showConfirmButton: false });
   };
 
   window.nextCustomer = () => {
-    if (currentQueue.length === 0) return alert('待っているお客様はいません');
+    if (currentQueue.length === 0) {
+      return Swal.fire({ icon: 'info', title: 'お知らせ', text: '待っているお客様はいません' });
+    }
     const firstPerson = currentQueue[0];
 
     if (firstPerson.count > 1) {
@@ -166,21 +168,49 @@
   };
 
   window.holdCustomer = (id, name) => {
-    if (confirm(`${name} 様を保留にしますか？`)) {
-      update(ref(db, `queue/${id}`), { status: 'hold' });
-    }
+    Swal.fire({
+      title: '確認',
+      text: `${name} 様を保留にしますか？`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: '保留にする',
+      cancelButtonText: 'キャンセル'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        update(ref(db, `queue/${id}`), { status: 'hold' });
+      }
+    });
   };
 
   window.restoreCustomer = (id, name) => {
-    if (confirm(`${name} 様を通常の待ち列（最後尾）へ戻しますか？`)) {
-      update(ref(db, `queue/${id}`), { status: 'waiting', createdAt: serverTimestamp() });
-    }
+    Swal.fire({
+      title: '確認',
+      text: `${name} 様を通常の待ち列（最後尾）へ戻しますか？`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: '戻す',
+      cancelButtonText: 'キャンセル'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        update(ref(db, `queue/${id}`), { status: 'waiting', createdAt: serverTimestamp() });
+      }
+    });
   };
 
   window.cancelCustomer = (id, name) => {
-    if (confirm(`${name} 様の予約をキャンセル（削除）しますか？`)) {
-      remove(ref(db, `queue/${id}`));
-    }
+    Swal.fire({
+      title: '削除の確認',
+      text: `${name} 様の予約をキャンセル（削除）しますか？`,
+      icon: 'error',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      confirmButtonText: '削除する',
+      cancelButtonText: 'キャンセル'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        remove(ref(db, `queue/${id}`));
+      }
+    });
   };
 
   function render() {
