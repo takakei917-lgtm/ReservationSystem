@@ -19,12 +19,37 @@
     .btn-hold { background-color: #f59e0b; margin-right: 5px; }
     .btn-restore { background-color: #2563eb; margin-right: 5px; }
     ul { list-style: none; padding: 0; }
-    li { padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+    
+    /* リスト項目のレスポンシブ設定 */
+    li { 
+      padding: 12px; 
+      border-bottom: 1px solid #e2e8f0; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      gap: 10px; 
+    }
     li:first-child { font-weight: bold; background-color: #fee2e2; border-radius: 6px; }
+    
+    /* 左側のテキスト部分：長い名前は適切に折り返し */
+    .customer-info {
+      word-break: break-all;
+      flex-grow: 1;
+    }
+    .count-text {
+      white-space: nowrap; /* 「（N名）」の連動折り返しを防ぐ */
+    }
+
+    /* 右側のボタン部分：絶対に1行を維持して潰さない */
+    .btn-group {
+      display: flex;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
     .hold-card { border: 2px dashed #f59e0b; background-color: #fffbeeb0; }
     .setting-card { border: 1px solid #cbd5e1; background-color: #f1f5f9; }
     
-    /* 本日の施術人数表示用スタイル */
     .daily-counter {
       text-align: center;
       background-color: #f1f5f9;
@@ -45,31 +70,24 @@
 <div class="container">
   <h1>🔒 【店員専用】管理画面</h1>
 
-  <!-- 1. 案内操作 -->
   <div class="card">
     <h2>案内操作</h2>
-    
-    <!-- 追加: 本日の施術完了人数表示 -->
     <div class="daily-counter">
       本日の施術完了人数: <span id="todayCountDisplay">0</span> 人
     </div>
-
     <button class="btn-main" onclick="nextCustomer()">1人 施術開始（先頭を減算/削除）</button>
   </div>
 
-  <!-- 2. 待ち一覧 -->
   <div class="card">
     <h2>現在の順番待ち一覧</h2>
     <ul id="waitingList"></ul>
   </div>
 
-  <!-- 3. 保留一覧 -->
   <div class="card hold-card">
     <h2 style="color: #d97706; margin-top: 0;">⏳ 保留・ご不在一覧</h2>
     <ul id="holdList"></ul>
   </div>
 
-  <!-- 4. システム設定 -->
   <div class="card setting-card">
     <h2 style="color: #475569;">⚙️ システム設定</h2>
     <div class="setting-row">
@@ -123,7 +141,6 @@
   const queueRef = ref(db, 'queue');
   const settingsRef = ref(db, 'settings');
 
-  // 本日の日付文字列を取得する関数 (YYYY-MM-DD形式)
   const getTodayKey = () => {
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -139,7 +156,6 @@
   let onHoldQueue = [];
   let todayCompletedCount = 0;
 
-  // 本日の施術人数のリアルタイム監視
   onValue(todayStatsRef, (snapshot) => {
     const data = snapshot.val();
     todayCompletedCount = (data && data.completedCount) ? data.completedCount : 0;
@@ -201,7 +217,6 @@
     }
     const firstPerson = currentQueue[0];
 
-    // 1人分案内したため、本日のカウントを1増やす
     update(todayStatsRef, {
       completedCount: todayCompletedCount + 1
     });
@@ -269,8 +284,10 @@
       currentQueue.forEach((item, index) => {
         const li = document.createElement('li');
         li.innerHTML = `
-          <span>${index + 1}番目: ${item.name} 様 （${item.count}名）</span>
-          <div>
+          <div class="customer-info">
+            ${index + 1}番目: ${item.name} 様 <span class="count-text">（${item.count}名）</span>
+          </div>
+          <div class="btn-group">
             <button class="btn-hold" onclick="holdCustomer('${item.id}', '${item.name}')">保留</button>
             <button class="btn-cancel" onclick="cancelCustomer('${item.id}', '${item.name}')">取消</button>
           </div>
@@ -289,8 +306,10 @@
         const li = document.createElement('li');
         li.style.backgroundColor = '#ffffff';
         li.innerHTML = `
-          <span>${item.name} 様 （${item.count}名）</span>
-          <div>
+          <div class="customer-info">
+            ${item.name} 様 <span class="count-text">（${item.count}名）</span>
+          </div>
+          <div class="btn-group">
             <button class="btn-restore" onclick="restoreCustomer('${item.id}', '${item.name}')">戻す</button>
             <button class="btn-cancel" onclick="cancelCustomer('${item.id}', '${item.name}')">取消</button>
           </div>
