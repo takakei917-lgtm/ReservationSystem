@@ -21,12 +21,37 @@
     .cancel-notice { font-size: 14px; color: #475569; text-align: center; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #a7f3d0; font-weight: bold; }
     .limit-notice { background-color: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; }
     .closed-notice { background-color: #f3f4f6; border: 1px solid #9ca3af; color: #374151; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; }
+    
     ul { list-style: none; padding: 0; }
-    li { padding: 12px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+    li { 
+      padding: 12px; 
+      border-bottom: 1px solid #e2e8f0; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      gap: 10px;
+      word-break: break-all;
+    }
     li.next-item { font-weight: bold; background-color: #ecfdf5; border-radius: 6px; border-left: 5px solid var(--primary); }
-    .badge-next { background-color: var(--primary); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
+    .badge-next { background-color: var(--primary); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; display: inline-block; }
     .hold-card { border: 1px solid #fed7aa; background-color: #fff7ed; }
-    .hold-badge { background-color: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; }
+    .hold-badge { background-color: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; display: inline-block; }
+    
+    .customer-info { flex-grow: 1; }
+    .nobreak { white-space: nowrap; }
+    .time-info { white-space: nowrap; flex-shrink: 0; }
+
+    /* スマホ（画面幅が狭い端末）向けの表示切り替え */
+    @media (max-width: 480px) {
+      li {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .time-info {
+        align-self: flex-end;
+        font-size: 14px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -211,10 +236,20 @@
         const li = document.createElement('li');
         if (index === 0) {
           li.classList.add('next-item');
-          li.innerHTML = `<span><span class="badge-next">NEXT</span> 1番目: ${item.name} 様 (${item.count}名)</span><span style="color: #059669;">[およそ ${timePerPerson} 分以内]</span>`;
+          li.innerHTML = `
+            <div class="customer-info">
+              <span class="badge-next">NEXT</span> 1番目: ${item.name} 様 <span class="nobreak">(${item.count}名)</span>
+            </div>
+            <div class="time-info" style="color: #059669;">[およそ ${timePerPerson} 分以内]</div>
+          `;
         } else {
           const waitMinutes = accumulatedPeople * timePerPerson;
-          li.textContent = `${index + 1}番目: ${item.name} 様 (${item.count}名) （あと約 ${waitMinutes} 分）`;
+          li.innerHTML = `
+            <div class="customer-info">
+              ${index + 1}番目: ${item.name} 様 <span class="nobreak">(${item.count}名)</span>
+            </div>
+            <div class="time-info" style="color: #64748b;">（あと約 ${waitMinutes} 分）</div>
+          `;
         }
         listElement.appendChild(li);
         accumulatedPeople += item.count;
@@ -229,7 +264,11 @@
       holdCard.style.display = 'block';
       onHoldQueue.forEach((item) => {
         const li = document.createElement('li');
-        li.innerHTML = `<span><span class="hold-badge">保留中</span> ${item.name} 様 (${item.count}名)</span>`;
+        li.innerHTML = `
+          <div class="customer-info">
+            <span class="hold-badge">保留中</span> ${item.name} 様 <span class="nobreak">(${item.count}名)</span>
+          </div>
+        `;
         holdListElement.appendChild(li);
       });
     } else {
