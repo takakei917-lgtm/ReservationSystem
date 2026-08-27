@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>【店頭用】順番待ち受付</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     :root { --primary: #059669; --bg: #f0fdf4; --card-bg: #ffffff; --text: #0f172a; }
     body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
@@ -80,16 +81,15 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getDatabase, ref, push, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-  // ★ご自身のFirebase設定情報★
   const firebaseConfig = {
     apiKey: "AIzaSyBa1DxQOAAaPp6TZunW5XyX2iE95AQWYZc",
-  authDomain: "reservationsystem-a3e8d.firebaseapp.com",
-  databaseURL: "https://reservationsystem-a3e8d-default-rtdb.firebaseio.com",
-  projectId: "reservationsystem-a3e8d",
-  storageBucket: "reservationsystem-a3e8d.firebasestorage.app",
-  messagingSenderId: "362167708528",
-  appId: "1:362167708528:web:b0fdbfca090f0b83eb7db5",
-  measurementId: "G-FREYRL5GKT"
+    authDomain: "reservationsystem-a3e8d.firebaseapp.com",
+    databaseURL: "https://reservationsystem-a3e8d-default-rtdb.firebaseio.com",
+    projectId: "reservationsystem-a3e8d",
+    storageBucket: "reservationsystem-a3e8d.firebasestorage.app",
+    messagingSenderId: "362167708528",
+    appId: "1:362167708528:web:b0fdbfca090f0b83eb7db5",
+    measurementId: "G-FREYRL5GKT"
   };
 
   const app = initializeApp(firebaseConfig);
@@ -166,25 +166,29 @@
   });
 
   window.registerName = () => {
-    if (!checkLimit()) return alert('現在受付を行っておりません');
+    if (!checkLimit()) {
+      return Swal.fire({ icon: 'error', title: '受付不可', text: '現在受付を行っておりません' });
+    }
 
     const nameInput = document.getElementById('userName');
     const countInput = document.getElementById('userCount');
     const name = nameInput.value.trim();
     const count = parseInt(countInput.value) || 1;
 
-    if (!name) return alert('お名前を入力してください');
+    if (!name) {
+      return Swal.fire({ icon: 'warning', title: '入力エラー', text: 'お名前を入力してください' });
+    }
 
     const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0) + 
                         onHoldQueue.reduce((sum, item) => sum + item.count, 0);
     if (totalPeople + count > maxPeopleLimit) {
-      return alert(`上限人数（${maxPeopleLimit}名）を超えるため登録できません。`);
+      return Swal.fire({ icon: 'warning', title: '上限オーバー', text: `上限人数（${maxPeopleLimit}名）を超えるため登録できません。` });
     }
 
     push(queueRef, { name: name, count: count, status: 'waiting', createdAt: serverTimestamp() });
     nameInput.value = '';
     countInput.value = '1';
-    alert('受付が完了しました！');
+    Swal.fire({ icon: 'success', title: '受付完了', text: '受付が完了しました！' });
   };
 
   function render() {
