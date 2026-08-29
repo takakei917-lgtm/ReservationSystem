@@ -45,6 +45,11 @@
       border: 1px solid #e2e8f0;
       border-radius: 4px;
       background: #fff;
+      cursor: zoom-in; /* クリックで拡大できることを示すカーソル */
+      transition: transform 0.1s ease;
+    }
+    .name-img:hover {
+      transform: scale(1.05);
     }
     .count-text {
       white-space: nowrap; /* 「（N名）」の連動折り返しを防ぐ */
@@ -72,6 +77,54 @@
       font-size: 24px;
       font-weight: bold;
       color: #dc2626;
+    }
+
+    /* 手書き画像拡大用モーダル（ポップアップ） */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 9999;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      box-sizing: border-border-box;
+    }
+    .modal-content {
+      background: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 90%;
+      max-height: 80%;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+      position: relative;
+    }
+    .modal-img {
+      max-width: 100%;
+      max-height: 60vh;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+    .modal-close {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      font-size: 24px;
+      color: #64748b;
+      cursor: pointer;
+      font-weight: bold;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+    .modal-close:hover {
+      color: #0f172a;
     }
   </style>
 </head>
@@ -130,6 +183,16 @@
   </div>
 </div>
 
+<!-- 拡大表示用モーダル -->
+<div id="imageModal" class="modal-overlay" onclick="closeModal()">
+  <div class="modal-content" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3 style="margin-top: 0; color: #1e3a8a;">✍️ 手書き名前（拡大）</h3>
+    <img id="modalImage" class="modal-img" src="" alt="拡大表示">
+    <div style="margin-top: 10px; font-size: 12px; color: #64748b;">※画面の背景または「✕」をクリックすると閉じます</div>
+  </div>
+</div>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getDatabase, ref, onValue, remove, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -165,6 +228,19 @@
   let currentQueue = [];
   let onHoldQueue = [];
   let todayCompletedCount = 0;
+
+  // モーダル表示制御機能
+  window.openModal = (imgSrc) => {
+    const modal = document.getElementById('imageModal');
+    const modalImg = document.getElementById('modalImage');
+    modalImg.src = imgSrc;
+    modal.style.display = 'flex';
+  };
+
+  window.closeModal = () => {
+    const modal = document.getElementById('imageModal');
+    modal.style.display = 'none';
+  };
 
   onValue(todayStatsRef, (snapshot) => {
     const data = snapshot.val();
@@ -292,7 +368,7 @@
 
   function renderNameHTML(item) {
     if (item.nameImage) {
-      return `<img src="${item.nameImage}" class="name-img" alt="手書き名"> 様`;
+      return `<img src="${item.nameImage}" class="name-img" alt="手書き名" onclick="openModal('${item.nameImage}')" title="クリックで拡大"> 様`;
     }
     return `${item.name} 様`;
   }
