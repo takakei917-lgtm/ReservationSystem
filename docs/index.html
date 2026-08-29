@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>【オンライン予約】順番待ち受付</title>
+  <title>【ネット予約】順番待ち受付</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <style>
-    :root { --primary: #2563eb; --bg: #eff6ff; --card-bg: #ffffff; --text: #0f172a; }
+    :root { --primary: #0284c7; --bg: #f0f9ff; --card-bg: #ffffff; --text: #0f172a; }
     body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
     
     .container { max-width: 600px; margin: 0 auto; }
@@ -23,11 +23,11 @@
     }
     .input-group { display: flex; flex-direction: column; gap: 20px; margin-bottom: 15px; }
     
-    .input-label { font-size: 14px; color: #1d4ed8; font-weight: bold; margin-bottom: 6px; }
+    .input-label { font-size: 14px; color: #0369a1; font-weight: bold; margin-bottom: 6px; }
 
     input[type="text"], input[type="number"] { 
       padding: 12px; 
-      border: 2px solid #bfdbfe; 
+      border: 2px solid #bae6fd; 
       border-radius: 8px; 
       font-size: 18px; 
       box-sizing: border-box;
@@ -39,14 +39,14 @@
       flex-direction: column;
       gap: 6px;
       padding-top: 10px;
-      border-top: 1px dashed #bfdbfe;
+      border-top: 1px dashed #bae6fd;
       width: 100%;
       box-sizing: border-box;
     }
     
     .canvas-wrapper {
       position: relative;
-      border: 2px dashed #bfdbfe;
+      border: 2px dashed #bae6fd;
       border-radius: 8px;
       background-color: #f8fafc;
       touch-action: none;
@@ -75,7 +75,7 @@
 
     .count-selection-area {
       padding-top: 10px;
-      border-top: 1px dashed #bfdbfe;
+      border-top: 1px dashed #bae6fd;
     }
     .count-btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
     .count-btn {
@@ -84,7 +84,7 @@
       padding: 12px 5px;
       background-color: #fff;
       color: var(--primary);
-      border: 2px solid #bfdbfe;
+      border: 2px solid #bae6fd;
       border-radius: 8px;
       font-size: 18px;
       font-weight: bold;
@@ -100,7 +100,7 @@
     .input-custom-count { margin-top: 8px; }
 
     .btn-submit { width: 100%; padding: 15px; background-color: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 20px; font-weight: bold; margin-top: 10px; }
-    .status-box { text-align: center; padding: 15px; background-color: #dbeafe; border-radius: 8px; }
+    .status-box { text-align: center; padding: 15px; background-color: #e0f2fe; border-radius: 8px; }
     .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
     
     .notice-box { padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; }
@@ -118,7 +118,7 @@
       gap: 10px;
       word-break: break-all;
     }
-    li.next-item { font-weight: bold; background-color: #eff6ff; border-radius: 6px; border-left: 5px solid var(--primary); }
+    li.next-item { font-weight: bold; background-color: #f0f9ff; border-radius: 6px; border-left: 5px solid var(--primary); }
     .badge-next { background-color: var(--primary); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; display: inline-block; }
     
     .customer-info { flex-grow: 1; display: flex; align-items: center; gap: 8px; }
@@ -140,8 +140,8 @@
   <div class="card">
     <h2>お名前と人数を入力してください</h2>
     
-    <div id="stoppedNotice" class="notice-box stopped-notice" style="display: none;">只今、受付を一時停止しております。</div>
-    <div id="closedNotice" class="notice-box closed-notice" style="display: none;">本日の営業・受付はすべて終了いたしました。</div>
+    <div id="stoppedNotice" class="notice-box stopped-notice" style="display: none;">只今、ネット予約受付を停止しております。</div>
+    <div id="closedNotice" class="notice-box closed-notice" style="display: none;">本日のネット予約受付時間は終了いたしました。</div>
     <div id="limitNotice" class="notice-box limit-notice" style="display: none;">受付上限人数（<span id="maxLimitDisplay">50</span>名）に達したため、現在の受付は一時的に終了いたしました。</div>
 
     <div id="formContainer">
@@ -215,8 +215,10 @@
   let timePerPerson = 20;
   let shopStartHour = 9;
   let shopEndHour = 18;
+  let startHour = 9;
+  let endHour = 18;
   let maxPeopleLimit = 50;
-  let isAccepting = true;
+  let netBookingEnabled = true;
 
   const canvas = document.getElementById('nameCanvas');
   const ctx = canvas.getContext('2d');
@@ -324,17 +326,18 @@
     const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0) + 
                         onHoldQueue.reduce((sum, item) => sum + item.count, 0);
 
-    const isShopOpen = (currentHour >= shopStartHour && currentHour < shopEndHour);
+    const isNetOpen = (currentHour >= startHour && currentHour < endHour);
 
     formEl.style.display = 'none';
     closedEl.style.display = 'none';
     limitEl.style.display = 'none';
     stoppedEl.style.display = 'none';
 
-    if (isAccepting === false) {
+    // 店員側からの受付切り替えフラグ (netBookingEnabled) を判定
+    if (netBookingEnabled === false) {
       stoppedEl.style.display = 'block';
       return false;
-    } else if (!isShopOpen) {
+    } else if (!isNetOpen) {
       closedEl.style.display = 'block';
       return false;
     } else if (totalPeople >= maxPeopleLimit) {
@@ -370,21 +373,31 @@
     render();
   });
 
+  // 店員用画面からの設定変更をリアルタイム監視
   onValue(settingsRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
       if (data.timePerPerson !== undefined) timePerPerson = data.timePerPerson;
       if (data.shopStartHour !== undefined) shopStartHour = data.shopStartHour;
       if (data.shopEndHour !== undefined) shopEndHour = data.shopEndHour;
+      if (data.startHour !== undefined) startHour = data.startHour;
+      if (data.endHour !== undefined) endHour = data.endHour;
       if (data.maxPeopleLimit !== undefined) maxPeopleLimit = data.maxPeopleLimit;
-      if (data.isAccepting !== undefined) isAccepting = data.isAccepting;
+      
+      // 店員用画面の切り替えプロパティ (netBookingEnabled / isAccepting) を同期
+      if (data.netBookingEnabled !== undefined) {
+        netBookingEnabled = data.netBookingEnabled;
+      } else if (data.isAccepting !== undefined) {
+        netBookingEnabled = data.isAccepting;
+      }
+      
       render();
     }
   });
 
   window.registerName = () => {
     if (!checkLimit()) {
-      return Swal.fire({ icon: 'error', title: '受付不可', text: '現在受付を行っておりません' });
+      return Swal.fire({ icon: 'error', title: '受付不可', text: '現在ネット受付を行っておりません' });
     }
 
     const textName = document.getElementById('userName').value.trim();
@@ -400,7 +413,7 @@
     };
 
     if (hasDrawn) {
-      payload.nameImage = canvas.toDataURL('image/png');
+      payload.nameImage = canvas.toDataURL('image/jpeg', 0.5);
     } else {
       payload.name = textName;
     }
@@ -416,7 +429,7 @@
     clearCanvas();
     document.getElementById('userName').value = '';
     resetCountSelection();
-    Swal.fire({ icon: 'success', title: '受付完了', text: '順番待ちの申込みが完了しました！', confirmButtonColor: '#2563eb' });
+    Swal.fire({ icon: 'success', title: '受付完了', text: 'ネットからの順番待ち申込みが完了しました！', confirmButtonColor: '#0284c7' });
   };
 
   function render() {
@@ -448,7 +461,7 @@
             <div class="customer-info">
               <span class="badge-next">NEXT</span> 1番目: ${nameDisplay} <span class="nobreak">(${item.count}名)</span>
             </div>
-            <div class="time-info" style="color: #2563eb; font-weight: bold;">[まもなくご案内]</div>
+            <div class="time-info" style="color: #0284c7; font-weight: bold;">[まもなくご案内]</div>
           `;
         } else {
           const waitMinutes = accumulatedPeople * timePerPerson;
