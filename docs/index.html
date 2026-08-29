@@ -160,16 +160,6 @@
       color: #b45309;
       margin-bottom: 8px;
     }
-
-    .notice-msg {
-      text-align: center;
-      padding: 12px;
-      background-color: #fee2e2;
-      color: #991b1b;
-      border-radius: 8px;
-      font-weight: bold;
-      margin-bottom: 16px;
-    }
   </style>
 </head>
 <body>
@@ -177,12 +167,7 @@
 <div class="container">
   <h1 class="header-title">📱 オンライン順番受付</h1>
 
-  <!-- ネット受付OFF時や営業時間外に表示するメッセージ -->
-  <div id="noticeMessage" class="notice-msg" style="display: none;">
-    現在、ネットからの受付は停止しております。（順番の閲覧のみ可能です）
-  </div>
-
-  <!-- 受付カード（OFFの時は非表示） -->
+  <!-- 受付カード（OFFの時は完全に非表示） -->
   <div class="card" id="formCard">
     <h3 style="margin-top: 0;">お名前と人数を入力してください</h3>
     
@@ -262,7 +247,7 @@
   let timePerPerson = 20;
   let shopStartHour = 9;
   let shopEndHour = 18;
-  let netBookingEnabled = true; // 管理画面のプロパティ名に合わせる
+  let netBookingEnabled = true;
 
   const canvas = document.getElementById('nameCanvas');
   const ctx = canvas.getContext('2d');
@@ -379,23 +364,18 @@
     customCountInput.value = '5';
   }
 
-  // 判定処理（フォームの表示/非表示および案内メッセージの切替）
   function checkLimit() {
     const now = new Date();
     const currentHour = now.getHours();
     const formCard = document.getElementById('formCard');
-    const noticeMessage = document.getElementById('noticeMessage');
 
     const isShopOpen = (currentHour >= shopStartHour && currentHour < shopEndHour);
 
-    // 営業時間外、または店員によりネット受付がOFF（netBookingEnabled === false）の場合
     if (!isShopOpen || !netBookingEnabled) {
       if (formCard) formCard.style.display = 'none';
-      if (noticeMessage) noticeMessage.style.display = 'block';
       return false;
     } else {
       if (formCard) formCard.style.display = 'block';
-      if (noticeMessage) noticeMessage.style.display = 'none';
       return true;
     }
   }
@@ -424,7 +404,6 @@
     render();
   });
 
-  // 設定値の読み込み（管理画面の netBookingEnabled に対応）
   onValue(settingsRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
@@ -432,7 +411,6 @@
       if (data.shopStartHour !== undefined) shopStartHour = Number(data.shopStartHour);
       if (data.shopEndHour !== undefined) shopEndHour = Number(data.shopEndHour);
       
-      // 管理画面のプロパティ名「netBookingEnabled」を監視（未設定ならデフォルトtrue）
       if (data.netBookingEnabled !== undefined) {
         netBookingEnabled = Boolean(data.netBookingEnabled);
       } else if (data.isOnlineEnabled !== undefined) {
