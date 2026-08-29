@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>オンライン順番受付</title>
+  <title>店頭順番受付</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <style>
     :root { 
-      --primary: #2563eb; 
-      --primary-hover: #1d4ed8;
-      --bg: #eff6ff; 
+      --primary: #16a34a; 
+      --primary-hover: #15803d;
+      --bg: #f0fdf4; 
       --card-bg: #ffffff; 
       --text: #0f172a; 
-      --border-color: #bfdbfe;
+      --border-color: #bbf7d0;
       --hold-border: #f59e0b; 
     }
     body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 16px; }
@@ -31,7 +31,7 @@
     }
     .input-group { display: flex; flex-direction: column; gap: 16px; margin-bottom: 12px; }
     
-    .input-label { font-size: 14px; color: #1e40af; font-weight: bold; margin-bottom: 6px; }
+    .input-label { font-size: 14px; color: #15803d; font-weight: bold; margin-bottom: 6px; }
 
     input[type="text"], input[type="number"] { 
       padding: 12px; 
@@ -119,25 +119,17 @@
       font-size: 18px; 
       font-weight: bold; 
       margin-top: 8px; 
-      box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+      box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
     }
     .btn-submit:hover {
       background-color: var(--primary-hover);
     }
-    
-    .notice-message {
-      text-align: center;
-      padding: 16px;
-      background-color: #fef2f2;
-      color: #991b1b;
-      border: 1px solid #fecaca;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 15px;
-    }
-
-    .status-box { text-align: center; padding: 12px; background-color: #dbeafe; border-radius: 8px; }
+    .status-box { text-align: center; padding: 12px; background-color: #dcfce7; border-radius: 8px; }
     .status-number { font-size: 32px; font-weight: bold; color: var(--primary); }
+    
+    .notice-box { padding: 16px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 16px; }
+    .closed-notice { background-color: #f3f4f6; border: 1px solid #9ca3af; color: #374151; }
+    .limit-notice { background-color: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
     
     ul { list-style: none; padding: 0; margin: 0; }
     li { 
@@ -150,7 +142,7 @@
       font-size: 15px;
       word-break: break-all;
     }
-    li.next-item { font-weight: bold; background-color: #eff6ff; border-radius: 6px; border-left: 5px solid var(--primary); }
+    li.next-item { font-weight: bold; background-color: #f0fdf4; border-radius: 6px; border-left: 5px solid var(--primary); }
     li.hold-item { background-color: #fef3c7; border-radius: 6px; border-left: 5px solid var(--hold-border); margin-bottom: 6px; }
     
     .badge-next { background-color: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 4px; }
@@ -177,17 +169,15 @@
 <body>
 
 <div class="container">
-  <h1 class="header-title">📱 オンライン順番受付</h1>
+  <h1 class="header-title">✂ 店頭順番受付</h1>
 
-  <!-- 受付カード -->
+  <div id="shopClosedNotice" class="notice-box closed-notice" style="display: none;">本日の受付は終了いたしました。</div>
+  <div id="shopLimitNotice" class="notice-box limit-notice" style="display: none;">現在、発券人数・組数の上限に達しているため受付を一時停止しております。</div>
+
   <div class="card" id="formCard">
-    <!-- メッセージ表示領域 -->
-    <div id="noticeContainer" class="notice-message" style="display: none;"></div>
-
-    <!-- フォーム入力エリア -->
+    <h3 style="margin-top: 0;">お名前と人数を入力してください</h3>
+    
     <div id="formContainer">
-      <h3 style="margin-top: 0;">お名前と人数を入力してください</h3>
-      
       <div class="input-group">
         <div>
           <div class="input-label">⌨️ お名前（文字入力）：</div>
@@ -215,7 +205,7 @@
         </div>
       </div>
 
-      <button type="button" class="btn-submit" onclick="registerName()">受付する</button>
+      <button type="button" class="btn-submit" onclick="registerName()">発券・受付する</button>
     </div>
   </div>
 
@@ -224,7 +214,7 @@
     <div class="status-box">
       <div>現在の待ち状況</div>
       <div class="status-number" id="totalWaiting">0 組 (0 人)</div>
-      <div>目安時間: 約 <span id="estimatedTime" style="font-weight: bold;">0</span> 分</div>
+      <div>お渡し目安時間: 約 <span id="estimatedTime" style="font-weight: bold;">0</span> 分</div>
     </div>
     
     <h4>待ちリスト</h4>
@@ -261,14 +251,10 @@
   let currentQueue = [];
   let onHoldQueue = [];
   let timePerPerson = 20;
-  
-  // 設定変数
-  let shopStartHour = 0;
-  let shopEndHour = 24;
-  let netStartHour = 0;
-  let netEndHour = 24;
-  let maxQueueLimit = 0;
-  let netBookingEnabled = true;
+  let shopStartHour = 9;
+  let shopEndHour = 18;
+  let maxGroups = 0;  // 0 は上限なし
+  let maxPeople = 0;  // 0 は上限なし
 
   const canvas = document.getElementById('nameCanvas');
   const ctx = canvas.getContext('2d');
@@ -385,80 +371,39 @@
     customCountInput.value = '5';
   }
 
-  // 判定処理（最優先条件から順にチェック）
   function checkLimit() {
-    const formCard = document.getElementById('formCard');
-    const formContainer = document.getElementById('formContainer');
-    const noticeContainer = document.getElementById('noticeContainer');
-
-    // 1. 【最優先】ネット受付機能がOFFの場合はカード自体を非表示（何も表示しない）
-    if (!netBookingEnabled) {
-      if (formCard) formCard.style.display = 'none';
-      return false;
-    }
-    if (formCard) formCard.style.display = 'block';
-
     const now = new Date();
-    const currentMin = now.getHours() * 60 + now.getMinutes();
+    const currentHour = now.getHours();
 
-    const sStart = Number(shopStartHour);
-    const sEnd = Number(shopEndHour);
-    const nStart = Number(netStartHour);
-    const nEnd = Number(netEndHour);
+    const formCard = document.getElementById('formCard');
+    const shopClosedEl = document.getElementById('shopClosedNotice');
+    const shopLimitEl = document.getElementById('shopLimitNotice');
 
-    // 時間チェック補助関数
-    function checkTime(startHour, endHour) {
-      // 0〜24時（全日）指定の場合
-      if ((startHour === 0 && endHour >= 24) || (startHour === 0 && endHour === 0)) {
-        return true;
-      }
-      const startMin = startHour * 60;
-      const endMin = endHour * 60;
+    const isShopOpen = (currentHour >= shopStartHour && currentHour < shopEndHour);
 
-      // 深夜帯跨ぎ（例: 22時〜翌2時）
-      if (startMin > endMin) {
-        return (currentMin >= startMin || currentMin < endMin);
-      }
-      // 通常（例: 9時〜18時）
-      return (currentMin >= startMin && currentMin < endMin);
-    }
-
-    const isShopOpen = checkTime(sStart, sEnd);
-    const isNetOpen = checkTime(nStart, nEnd);
-
-    // 組数と人数（合計人名数）を計算
-    const totalGroups = currentQueue.length;
-    const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0);
-
-    // 2. 組数または人数のいずれかが上限（maxQueueLimit）に達している場合
-    const isLimitReached = (maxQueueLimit > 0 && (totalGroups >= maxQueueLimit || totalPeople >= maxQueueLimit));
-
-    if (isLimitReached) {
-      formContainer.style.display = 'none';
-      noticeContainer.style.display = 'block';
-      noticeContainer.textContent = 'ただいま待ち人数が上限に達しているため、受付を一時停止しております。';
-      return false;
-    }
-
-    // 3. ネット受付時間外
-    if (!isNetOpen) {
-      formContainer.style.display = 'none';
-      noticeContainer.style.display = 'block';
-      noticeContainer.textContent = 'ただいまオンライン受付時間外です。';
-      return false;
-    }
-
-    // 4. 営業時間外
     if (!isShopOpen) {
-      formContainer.style.display = 'none';
-      noticeContainer.style.display = 'block';
-      noticeContainer.textContent = '本日の営業は終了しているため、受付を行っておりません。';
+      formCard.style.display = 'none';
+      shopClosedEl.style.display = 'block';
+      shopLimitEl.style.display = 'none';
       return false;
     }
 
-    // 5. 受付ON＆全条件クリア
-    formContainer.style.display = 'block';
-    noticeContainer.style.display = 'none';
+    const currentGroups = currentQueue.length;
+    const currentPeople = currentQueue.reduce((sum, item) => sum + item.count, 0);
+
+    const isGroupOver = (maxGroups > 0 && currentGroups >= maxGroups);
+    const isPeopleOver = (maxPeople > 0 && currentPeople >= maxPeople);
+
+    if (isGroupOver || isPeopleOver) {
+      formCard.style.display = 'none';
+      shopClosedEl.style.display = 'none';
+      shopLimitEl.style.display = 'block';
+      return false;
+    }
+
+    formCard.style.display = 'block';
+    shopClosedEl.style.display = 'none';
+    shopLimitEl.style.display = 'none';
     return true;
   }
 
@@ -486,48 +431,22 @@
     render();
   });
 
-  // 設定ノードの監視（表記揺れ・柔軟な取得に対応）
   onValue(settingsRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
-
-      // 所要時間
       if (data.timePerPerson !== undefined) timePerPerson = Number(data.timePerPerson);
-      
-      // 営業時間
       if (data.shopStartHour !== undefined) shopStartHour = Number(data.shopStartHour);
       if (data.shopEndHour !== undefined) shopEndHour = Number(data.shopEndHour);
-      
-      // ネット受付時間（プロパティ名の表記揺れをすべてカバー）
-      const nStart = data.netStartHour ?? data.netStart ?? data.onlineStartHour ?? data.onlineStart;
-      const nEnd = data.netEndHour ?? data.netEnd ?? data.onlineEndHour ?? data.onlineEnd;
-
-      netStartHour = (nStart !== undefined && nStart !== '') ? Number(nStart) : shopStartHour;
-      netEndHour = (nEnd !== undefined && nEnd !== '') ? Number(nEnd) : shopEndHour;
-
-      // 受付上限数（maxQueueLimit / maxLimit / limit 等の別名に対応）
-      const limitVal = data.maxQueueLimit ?? data.maxLimit ?? data.limit ?? data.maxCapacity;
-      maxQueueLimit = (limitVal !== undefined && limitVal !== '') ? Number(limitVal) : 0;
-
-      // ネット受付ON/OFF（あらゆるパターンに対応）
-      if (data.netBookingEnabled !== undefined) {
-        netBookingEnabled = Boolean(data.netBookingEnabled);
-      } else if (data.isOnlineEnabled !== undefined) {
-        netBookingEnabled = Boolean(data.isOnlineEnabled);
-      } else if (data.netEnabled !== undefined) {
-        netBookingEnabled = Boolean(data.netEnabled);
-      } else if (data.onlineEnabled !== undefined) {
-        netBookingEnabled = Boolean(data.onlineEnabled);
-      } else {
-        netBookingEnabled = true;
-      }
-      
+      if (data.maxGroups !== undefined) maxGroups = Number(data.maxGroups);
+      if (data.maxPeople !== undefined) maxPeople = Number(data.maxPeople);
       render();
     }
   });
 
   window.registerName = () => {
-    if (!checkLimit()) return;
+    if (!checkLimit()) {
+      return Swal.fire({ icon: 'error', title: '受付不可', text: '現在、受付時間外または発券上限に達しています。' });
+    }
 
     const textName = document.getElementById('userName').value.trim();
 
@@ -552,7 +471,7 @@
     clearCanvas();
     document.getElementById('userName').value = '';
     resetCountSelection();
-    Swal.fire({ icon: 'success', title: '受付完了', text: '順番待ちの受付が完了しました。', confirmButtonColor: '#2563eb' });
+    Swal.fire({ icon: 'success', title: '受付完了', text: '順番待ちの受付が完了しました。', confirmButtonColor: '#16a34a' });
   };
 
   function render() {
@@ -584,7 +503,7 @@
             <div class="customer-info">
               <span class="badge-next">NEXT</span> 1番目: ${nameDisplay} <span class="nobreak">(${item.count}名)</span>
             </div>
-            <div class="time-info" style="color: #2563eb; font-weight: bold;">[まもなくご案内]</div>
+            <div class="time-info" style="color: #16a34a; font-weight: bold;">[まもなくご案内]</div>
           `;
         } else {
           const waitMinutes = accumulatedPeople * timePerPerson;
