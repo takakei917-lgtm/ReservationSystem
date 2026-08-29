@@ -129,6 +129,7 @@
     
     .notice-box { padding: 16px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 16px; }
     .closed-notice { background-color: #f3f4f6; border: 1px solid #9ca3af; color: #374151; }
+    .limit-notice { background-color: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
     
     ul { list-style: none; padding: 0; margin: 0; }
     li { 
@@ -171,6 +172,7 @@
   <h1 class="header-title">✂ 店頭順番受付</h1>
 
   <div id="shopClosedNotice" class="notice-box closed-notice" style="display: none;">本日の受付は終了いたしました。</div>
+  <div id="shopLimitNotice" class="notice-box limit-notice" style="display: none;">現在、発券人数・組数の上限に達しているため受付を一時停止しております。</div>
 
   <div class="card" id="formCard">
     <h3 style="margin-top: 0;">お名前と人数を入力してください</h3>
@@ -251,6 +253,8 @@
   let timePerPerson = 20;
   let shopStartHour = 9;
   let shopEndHour = 18;
+  let maxGroups = 0;  // 0 は上限なし
+  let maxPeople = 0;  // 0 は上限なし
 
   const canvas = document.getElementById('nameCanvas');
   const ctx = canvas.getContext('2d');
@@ -373,18 +377,34 @@
 
     const formCard = document.getElementById('formCard');
     const shopClosedEl = document.getElementById('shopClosedNotice');
+    const shopLimitEl = document.getElementById('shopLimitNotice');
 
     const isShopOpen = (currentHour >= shopStartHour && currentHour < shopEndHour);
 
     if (!isShopOpen) {
       formCard.style.display = 'none';
       shopClosedEl.style.display = 'block';
+      shopLimitEl.style.display = 'none';
       return false;
-    } else {
-      formCard.style.display = 'block';
-      shopClosedEl.style.display = 'none';
-      return true;
     }
+
+    const currentGroups = currentQueue.length;
+    const currentPeople = currentQueue.reduce((sum, item) => sum + item.count, 0);
+
+    const isGroupOver = (maxGroups > 0 && currentGroups >= maxGroups);
+    const isPeopleOver = (maxPeople > 0 && currentPeople >= maxPeople);
+
+    if (isGroupOver || isPeopleOver) {
+      formCard.style.display = 'none';
+      shopClosedEl.style.display = 'none';
+      shopLimitEl.style.display = 'block';
+      return false;
+    }
+
+    formCard.style.display = 'block';
+    shopClosedEl.style.display = 'none';
+    shopLimitEl.style.display = 'none';
+    return true;
   }
 
   onValue(queueRef, (snapshot) => {
@@ -417,13 +437,15 @@
       if (data.timePerPerson !== undefined) timePerPerson = Number(data.timePerPerson);
       if (data.shopStartHour !== undefined) shopStartHour = Number(data.shopStartHour);
       if (data.shopEndHour !== undefined) shopEndHour = Number(data.shopEndHour);
+      if (data.maxGroups !== undefined) maxGroups = Number(data.maxGroups);
+      if (data.maxPeople !== undefined) maxPeople = Number(data.maxPeople);
       render();
     }
   });
 
   window.registerName = () => {
     if (!checkLimit()) {
-      return Swal.fire({ icon: 'error', title: '受付時間外', text: '本日の営業は終了しております。' });
+      return Swal.fire({ icon: 'error', title: '受付不可', text: '現在、受付時間外または発券上限に達しています。' });
     }
 
     const textName = document.getElementById('userName').value.trim();
