@@ -3,206 +3,144 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>順番待ち受付・状況確認</title>
+  <title>【ネット用】順番待ち受付</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    *, *::before, *::after {
+    :root { --primary: #2563eb; --bg: #eff6ff; --card-bg: #ffffff; --text: #0f172a; }
+    body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; }
+    h1, h2 { text-align: center; color: var(--primary); }
+    .card { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
+    .input-group { display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px; }
+    
+    /* 入力エリアの調整 */
+    input[type="text"], input[type="number"] { 
+      padding: 12px; 
+      border: 2px solid #bfdbfe; 
+      border-radius: 8px; 
+      font-size: 18px; 
       box-sizing: border-box;
     }
+    .input-name { width: 100%; }
 
-    :root { --primary: #1e3a8a; --bg: #f8fafc; --card-bg: #ffffff; --text: #0f172a; }
-    body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 15px; }
-    .container { max-width: 500px; margin: 0 auto; width: 100%; }
-    h1, h2 { text-align: center; color: var(--primary); margin-top: 0; }
-    .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    
-    .status-box {
-      text-align: center;
-      background-color: #eff6ff;
+    /* 人数選択（ボタン＆数値入力）のスタイル */
+    .count-selection-label { font-size: 14px; color: #1d4ed8; font-weight: bold; margin-bottom: -5px; }
+    .count-btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .count-btn {
+      flex: 1;
+      min-width: 50px;
+      padding: 12px 5px;
+      background-color: #fff;
+      color: var(--primary);
       border: 2px solid #bfdbfe;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 15px;
-    }
-    .status-number { font-size: 32px; font-weight: bold; color: #1e40af; }
-    
-    .form-group { margin-bottom: 15px; }
-    label { display: block; font-weight: bold; margin-bottom: 5px; }
-    input[type="text"], input[type="number"], select {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      font-size: 16px;
-    }
-
-    /* 手書き入力エリアの設定 */
-    .handwriting-section {
-      border-top: 1px dashed #cbd5e1;
-      margin-top: 15px;
-      padding-top: 15px;
-    }
-    .handwriting-label {
-      font-weight: bold;
-      color: #1e3a8a;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-bottom: 6px;
-    }
-    .canvas-container {
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      background: #ffffff;
-      touch-action: none;
-      position: relative;
-    }
-    canvas {
-      width: 100%;
-      height: 120px;
-      display: block;
-      border-radius: 6px;
-    }
-    .canvas-btn-row {
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 5px;
-    }
-    .btn-clear {
-      background-color: #94a3b8;
-      color: white;
-      padding: 4px 10px;
-      font-size: 12px;
-      border-radius: 4px;
-      border: none;
-      cursor: pointer;
-    }
-
-    /* 送信ボタン */
-    .btn-submit {
-      width: 100%;
-      padding: 14px;
-      background-color: #2563eb;
-      color: white;
-      border: none;
       border-radius: 8px;
       font-size: 18px;
       font-weight: bold;
       cursor: pointer;
-      margin-top: 10px;
-    }
-    .btn-submit:disabled {
-      background-color: #94a3b8;
-      cursor: not-allowed;
-    }
-
-    /* 受付オフ時の通知カード */
-    .off-notice {
-      background-color: #fef2f2;
-      border: 2px dashed #f87171;
-      color: #991b1b;
-      padding: 20px;
-      border-radius: 12px;
       text-align: center;
-      font-weight: bold;
-      font-size: 16px;
-      margin-bottom: 20px;
-      line-height: 1.5;
+      transition: all 0.2s;
+    }
+    .count-btn.active {
+      background-color: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .input-custom-count {
+      margin-top: 8px;
+      width: 100%;
     }
 
-    ul { list-style: none; padding: 0; margin: 0; }
-    li {
-      padding: 10px 0;
-      border-bottom: 1px solid #e2e8f0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .btn-submit { width: 100%; padding: 15px; background-color: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 20px; font-weight: bold; }
+    .status-box { text-align: center; padding: 15px; background-color: #dbeafe; border-radius: 8px; }
+    .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
+    .limit-notice { background-color: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; }
+    .closed-notice { background-color: #f3f4f6; border: 1px solid #9ca3af; color: #374151; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; }
+    
+    ul { list-style: none; padding: 0; }
+    li { 
+      padding: 12px; 
+      border-bottom: 1px solid #e2e8f0; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      gap: 10px;
+      word-break: break-all;
     }
-    .name-img {
-      max-height: 30px;
-      vertical-align: middle;
-      border: 1px solid #e2e8f0;
-      border-radius: 4px;
+    li.next-item { font-weight: bold; background-color: #eff6ff; border-radius: 6px; border-left: 5px solid var(--primary); }
+    .badge-next { background-color: var(--primary); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; display: inline-block; }
+    
+    .customer-info { flex-grow: 1; display: flex; align-items: center; gap: 8px; }
+    .nobreak { white-space: nowrap; }
+    .time-info { white-space: nowrap; flex-shrink: 0; }
+
+    @media (max-width: 480px) {
+      li {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .time-info {
+        align-self: flex-end;
+        font-size: 14px;
+      }
     }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h1>順番待ち状況</h1>
+  <h1>📱 オンライン順番待ち受付</h1>
 
-  <!-- 待ち状況サマリー -->
   <div class="card">
-    <div class="status-box">
-      <div>現在の待ち組数</div>
-      <div class="status-number" id="waitingCount">0 組</div>
-      <div style="font-size: 14px; color: #475569; margin-top: 5px;">
-        およその待ち時間: <span id="estimatedTime" style="font-weight: bold; color: #1e3a8a;">0</span> 分
+    <h2>お名前と人数を入力してください</h2>
+    
+    <div id="closedNotice" class="closed-notice" style="display: none;">
+      本日の営業・受付はすべて終了いたしました。
+    </div>
+
+    <div id="limitNotice" class="limit-notice" style="display: none;">
+      受付上限人数（<span id="maxLimitDisplay">50</span>名）に達したため、現在の受付は一時的に終了いたしました。
+    </div>
+
+    <div id="formContainer">
+      <div class="input-group">
+        <div>
+          <input type="text" id="userName" class="input-name" placeholder="お名前">
+        </div>
+
+        <!-- 人数選択エリア -->
+        <div>
+          <div class="count-selection-label">👥 人数を選択してください：</div>
+          <div class="count-btn-group" id="countBtnGroup" style="margin-top: 8px;">
+            <button type="button" class="count-btn active" data-value="1">1名</button>
+            <button type="button" class="count-btn" data-value="2">2名</button>
+            <button type="button" class="count-btn" data-value="3">3名</button>
+            <button type="button" class="count-btn" data-value="4">4名</button>
+            <button type="button" class="count-btn" data-value="more">5名以上</button>
+          </div>
+          <!-- 5名以上の時の詳細数値入力欄 -->
+          <input type="number" id="customUserCount" class="input-custom-count" placeholder="具体的な人数を入力（例: 5）" min="5" value="5" style="display: none;">
+        </div>
       </div>
+      <button type="button" class="btn-submit" onclick="registerName()">順番待ちを申込む</button>
     </div>
   </div>
 
-  <!-- ネット受付OFF時に表示されるメッセージ -->
-  <div id="offNoticeCard" class="off-notice" style="display: none;">
-    ⚠️ 現在、ネットからの新規受付は停止しております。<br>
-    （順番待ち状況の確認のみ可能です）
-  </div>
-
-  <!-- 受付フォーム（ネット受付ONの時のみ表示） -->
-  <div id="bookingFormCard" class="card">
-    <h2>新規受付</h2>
-    <form id="queueForm">
-      <!-- ① テキスト入力 -->
-      <div class="form-group">
-        <label for="userName">お名前（キーボード入力）</label>
-        <input type="text" id="userName" placeholder="例：山田">
-      </div>
-
-      <!-- ② 手書き入力（同時表示） -->
-      <div class="handwriting-section">
-        <div class="handwriting-label">
-          ✍️ 手書きでお名前を書く場合はこちら
-        </div>
-        <div class="canvas-container">
-          <canvas id="nameCanvas"></canvas>
-        </div>
-        <div class="canvas-btn-row">
-          <button type="button" class="btn-clear" onclick="clearCanvas()">書き直す</button>
-        </div>
-      </div>
-
-      <!-- 人数選択（5名以上で詳細入力表示） -->
-      <div class="form-group" style="margin-top: 15px;">
-        <label for="userCountSelect">人数</label>
-        <select id="userCountSelect" onchange="handleCountChange()">
-          <option value="1">1名</option>
-          <option value="2">2名</option>
-          <option value="3">3名</option>
-          <option value="4">4名</option>
-          <option value="more">5名以上（指定して書く）</option>
-        </select>
-      </div>
-
-      <!-- 5名以上の時の人数記入欄（デフォルト非表示） -->
-      <div class="form-group" id="customCountGroup" style="display: none;">
-        <label for="customCountInput" style="color: #dc2626;">詳しい人数を入力してください</label>
-        <input type="number" id="customCountInput" min="5" placeholder="例：6">
-      </div>
-
-      <button type="submit" class="btn-submit" id="submitBtn">順番待ちに並ぶ</button>
-    </form>
-  </div>
-
-  <!-- 現在の待ち一覧 -->
   <div class="card">
-    <h2>現在の順番一覧</h2>
-    <ul id="publicWaitingList"></ul>
+    <h2>現在の案内状況</h2>
+    <div class="status-box">
+      <div>現在の待ち人数</div>
+      <div class="status-number" id="totalWaiting">0 組 (0 人)</div>
+      <div>全体の残り予想時間: 約 <span id="estimatedTime" style="font-weight: bold;">0</span> 分</div>
+    </div>
+    
+    <h3>現在の待ちリスト</h3>
+    <ul id="waitingList"></ul>
   </div>
 </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getDatabase, ref, onValue, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  import { getDatabase, ref, push, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBa1DxQOAAaPp6TZunW5XyX2iE95AQWYZc",
@@ -221,185 +159,186 @@
   const queueRef = ref(db, 'queue');
   const settingsRef = ref(db, 'settings');
 
+  let currentQueue = [];
+  let onHoldQueue = [];
   let timePerPerson = 20;
+  let shopStartHour = 9;
+  let shopEndHour = 18;
   let maxPeopleLimit = 50;
-  let netBookingEnabled = true;
 
-  // 手書きキャンバス制御
-  const canvas = document.getElementById('nameCanvas');
-  const ctx = canvas.getContext('2d');
-  let isDrawing = false;
-  let isCanvasEmpty = true;
+  // 人数選択ロジック
+  let selectedCountValue = "1";
+  const countBtns = document.querySelectorAll('.count-btn');
+  const customCountInput = document.getElementById('customUserCount');
 
-  function resizeCanvas() {
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = 120;
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = '#0f172a';
-  }
+  countBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      countBtns.forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      selectedCountValue = e.target.getAttribute('data-value');
 
-  window.addEventListener('resize', resizeCanvas);
-  setTimeout(resizeCanvas, 100);
-
-  function getPos(e) {
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: clientX - rect.left, y: clientY - rect.top };
-  }
-
-  canvas.addEventListener('mousedown', (e) => { isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); });
-  canvas.addEventListener('mousemove', (e) => { if (!isDrawing) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); isCanvasEmpty = false; });
-  canvas.addEventListener('mouseup', () => { isDrawing = false; });
-
-  canvas.addEventListener('touchstart', (e) => { isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); e.preventDefault(); });
-  canvas.addEventListener('touchmove', (e) => { if (!isDrawing) return; const pos = getPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); isCanvasEmpty = false; e.preventDefault(); });
-  canvas.addEventListener('touchend', () => { isDrawing = false; });
-
-  window.clearCanvas = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    isCanvasEmpty = true;
-  };
-
-  // 5名以上選択時の制御
-  window.handleCountChange = () => {
-    const selectVal = document.getElementById('userCountSelect').value;
-    const customGroup = document.getElementById('customCountGroup');
-    if (selectVal === 'more') {
-      customGroup.style.display = 'block';
-    } else {
-      customGroup.style.display = 'none';
-    }
-  };
-
-  // 設定監視
-  onValue(settingsRef, (snapshot) => {
-    if (snapshot.exists()) {
-      const data = snapshot.val();
-      timePerPerson = data.timePerPerson || 20;
-      maxPeopleLimit = data.maxPeopleLimit || 50;
-      netBookingEnabled = data.netBookingEnabled !== undefined ? data.netBookingEnabled : true;
-
-      const formCard = document.getElementById('bookingFormCard');
-      const offNotice = document.getElementById('offNoticeCard');
-
-      if (netBookingEnabled) {
-        formCard.style.display = 'block';
-        offNotice.style.display = 'none';
-        setTimeout(resizeCanvas, 100);
+      if (selectedCountValue === 'more') {
+        customCountInput.style.display = 'block';
+        customCountInput.focus();
       } else {
-        formCard.style.display = 'none';
-        offNotice.style.display = 'block';
+        customCountInput.style.display = 'none';
       }
-    }
+    });
   });
 
-  // 順番待ちデータ監視
+  function getSelectedCount() {
+    if (selectedCountValue === 'more') {
+      const val = parseInt(customCountInput.value);
+      return (isNaN(val) || val < 1) ? 5 : val;
+    }
+    return parseInt(selectedCountValue);
+  }
+
+  function resetCountSelection() {
+    countBtns.forEach(b => b.classList.remove('active'));
+    countBtns[0].classList.add('active');
+    selectedCountValue = "1";
+    customCountInput.style.display = 'none';
+    customCountInput.value = '5';
+  }
+
+  function checkLimit() {
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    document.getElementById('maxLimitDisplay').textContent = maxPeopleLimit;
+
+    const formEl = document.getElementById('formContainer');
+    const closedEl = document.getElementById('closedNotice');
+    const limitEl = document.getElementById('limitNotice');
+    
+    const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0) + 
+                        onHoldQueue.reduce((sum, item) => sum + item.count, 0);
+
+    const isShopOpen = (currentHour >= shopStartHour && currentHour < shopEndHour);
+
+    formEl.style.display = 'none';
+    closedEl.style.display = 'none';
+    limitEl.style.display = 'none';
+
+    if (!isShopOpen) {
+      closedEl.style.display = 'block';
+      return false;
+    } else if (totalPeople >= maxPeopleLimit) {
+      limitEl.style.display = 'block';
+      return false;
+    } else {
+      formEl.style.display = 'block';
+      return true;
+    }
+  }
+
   onValue(queueRef, (snapshot) => {
     const data = snapshot.val();
-    const listElement = document.getElementById('publicWaitingList');
-    listElement.innerHTML = '';
-
-    let waitingItems = [];
+    currentQueue = [];
+    onHoldQueue = [];
 
     if (data) {
       Object.keys(data).forEach(key => {
-        const item = data[key];
-        if (!item.status || item.status === 'waiting') {
-          waitingItems.push(item);
+        const item = { 
+          id: key, 
+          name: data[key].name, 
+          count: data[key].count || 1, 
+          status: data[key].status || 'waiting' 
+        };
+        if (item.status === 'hold') {
+          onHoldQueue.push(item);
+        } else {
+          currentQueue.push(item);
         }
       });
     }
+    render();
+  });
 
-    document.getElementById('waitingCount').textContent = `${waitingItems.length} 組`;
-    document.getElementById('estimatedTime').textContent = waitingItems.length * timePerPerson;
-
-    if (waitingItems.length === 0) {
-      listElement.innerHTML = '<li style="justify-content:center; color:#64748b;">現在待ちのお客様はいません</li>';
-    } else {
-      waitingItems.forEach((item, index) => {
-        const li = document.createElement('li');
-        let nameHTML = item.nameImage 
-          ? `<img src="${item.nameImage}" class="name-img" alt="手書き名"> 様`
-          : `${item.name} 様`;
-
-        li.innerHTML = `
-          <span>${index + 1}番目: ${nameHTML}</span>
-          <span style="color:#64748b;">（${item.count || 1}名）</span>
-        `;
-        listElement.appendChild(li);
-      });
+  onValue(settingsRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      if (data.timePerPerson) timePerPerson = data.timePerPerson;
+      if (data.shopStartHour !== undefined) shopStartHour = data.shopStartHour;
+      if (data.shopEndHour !== undefined) shopEndHour = data.shopEndHour;
+      if (data.maxPeopleLimit !== undefined) maxPeopleLimit = data.maxPeopleLimit;
+      render();
     }
   });
 
-  // 受付フォーム送信
-  document.getElementById('queueForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-
-    if (!netBookingEnabled) {
-      return Swal.fire({ icon: 'error', title: '受付停止中', text: '現在ネットからの受付は停止しております。' });
+  window.registerName = () => {
+    if (!checkLimit()) {
+      return Swal.fire({ icon: 'error', title: '受付不可', text: '現在受付を行っておりません' });
     }
 
-    const textName = document.getElementById('userName').value.trim();
-    const selectVal = document.getElementById('userCountSelect').value;
-    let finalCount = 1;
+    const nameInput = document.getElementById('userName');
+    const name = nameInput.value.trim();
+    const count = getSelectedCount();
 
-    if (selectVal === 'more') {
-      const customVal = parseInt(document.getElementById('customCountInput').value);
-      if (!customVal || customVal < 5) {
-        return Swal.fire({ icon: 'warning', title: '入力エラー', text: '5名以上の人数（数字）を正確に入力してください。' });
-      }
-      finalCount = customVal;
-    } else {
-      finalCount = parseInt(selectVal);
+    if (!name) {
+      return Swal.fire({ icon: 'warning', title: '入力エラー', text: 'お名前を入力してください' });
     }
 
-    let nameVal = "";
-    let nameImgData = null;
-
-    if (!isCanvasEmpty) {
-      nameVal = "手書き様";
-      nameImgData = canvas.toDataURL();
-    } else if (textName) {
-      nameVal = textName;
-    } else {
-      return Swal.fire({ 
-        icon: 'warning', 
-        title: '入力エラー', 
-        text: 'お名前をテキストで入力するか、手書き枠に書いてください。' 
-      });
+    const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0) + 
+                        onHoldQueue.reduce((sum, item) => sum + item.count, 0);
+    if (totalPeople + count > maxPeopleLimit) {
+      return Swal.fire({ icon: 'warning', title: '上限オーバー', text: `上限人数（${maxPeopleLimit}名）を超えるため登録できません。` });
     }
 
-    const submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = true;
-
-    push(queueRef, {
-      name: nameVal,
-      nameImage: nameImgData,
-      count: finalCount,
-      status: 'waiting',
-      createdAt: serverTimestamp()
-    }).then(() => {
-      Swal.fire({
-        icon: 'success',
-        title: '受付完了',
-        text: '順番待ちの登録が完了しました！',
-        timer: 2000,
-        showConfirmButton: false
-      });
-      document.getElementById('userName').value = '';
-      document.getElementById('customCountInput').value = '';
-      document.getElementById('userCountSelect').value = '1';
-      handleCountChange();
-      clearCanvas();
-      submitBtn.disabled = false;
-    }).catch((err) => {
-      Swal.fire({ icon: 'error', title: 'エラー', text: '登録に失敗しました。' });
-      submitBtn.disabled = false;
+    push(queueRef, { 
+      name: name, 
+      count: count, 
+      status: 'waiting', 
+      createdAt: serverTimestamp() 
     });
-  });
+
+    nameInput.value = '';
+    resetCountSelection();
+    Swal.fire({ icon: 'success', title: '受付完了', text: '順番待ちの申込みが完了しました！' });
+  };
+
+  function render() {
+    checkLimit();
+
+    const totalGroups = currentQueue.length;
+    const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0);
+
+    document.getElementById('totalWaiting').textContent = `${totalGroups} 組 (${totalPeople} 人)`;
+    document.getElementById('estimatedTime').textContent = totalPeople * timePerPerson;
+
+    const listElement = document.getElementById('waitingList');
+    listElement.innerHTML = '';
+
+    if (currentQueue.length === 0) {
+      listElement.innerHTML = '<li>現在待ちなし</li>';
+    } else {
+      let accumulatedPeople = 0;
+      currentQueue.forEach((item, index) => {
+        const li = document.createElement('li');
+
+        if (index === 0) {
+          li.classList.add('next-item');
+          li.innerHTML = `
+            <div class="customer-info">
+              <span class="badge-next">NEXT</span> 1番目: ${item.name} 様 <span class="nobreak">(${item.count}名)</span>
+            </div>
+            <div class="time-info" style="color: #2563eb; font-weight: bold;">[まもなくご案内]</div>
+          `;
+        } else {
+          const waitMinutes = accumulatedPeople * timePerPerson;
+          li.innerHTML = `
+            <div class="customer-info">
+              ${index + 1}番目: ${item.name} 様 <span class="nobreak">(${item.count}名)</span>
+            </div>
+            <div class="time-info" style="color: #64748b;">（あと約 ${waitMinutes} 分）</div>
+          `;
+        }
+        listElement.appendChild(li);
+        accumulatedPeople += item.count;
+      });
+    }
+  }
 </script>
 </body>
 </html>
