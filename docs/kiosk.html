@@ -11,19 +11,52 @@
     .container { max-width: 600px; margin: 0 auto; }
     h1, h2 { text-align: center; color: var(--primary); }
     .card { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    .input-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 15px; }
-    .row-inputs { display: flex; gap: 10px; align-items: center; }
-    input[type="text"], input[type="number"] { padding: 12px; border: 2px solid #a7f3d0; border-radius: 8px; font-size: 18px; }
-    .input-name { flex: 2; min-width: 150px; }
-    .input-count { flex: 1; min-width: 80px; }
+    .input-group { display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px; }
+    
+    /* 入力エリアの調整 */
+    input[type="text"], input[type="number"], select { 
+      padding: 12px; 
+      border: 2px solid #a7f3d0; 
+      border-radius: 8px; 
+      font-size: 18px; 
+      box-sizing: border-box;
+    }
+    .input-name { width: 100%; }
+
+    /* 人数選択（ボタン＆数値入力）のスタイル */
+    .count-selection-label { font-size: 14px; color: #047857; font-weight: bold; margin-bottom: -5px; }
+    .count-btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .count-btn {
+      flex: 1;
+      min-width: 50px;
+      padding: 12px 5px;
+      background-color: #fff;
+      color: var(--primary);
+      border: 2px solid #a7f3d0;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .count-btn.active {
+      background-color: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .input-custom-count {
+      margin-top: 8px;
+      width: 100%;
+    }
 
     /* 手書きキャンバス用スタイル */
     .canvas-container { text-align: center; }
     canvas { border: 2px solid #a7f3d0; border-radius: 8px; background: #fff; touch-action: none; cursor: crosshair; }
     .canvas-tools { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
-    .btn-clear { background-color: #64748b; font-size: 12px; padding: 6px 12px; border: none; color: white; border-radius: 4px; cursor: pointer; }
+    .btn-clear { background-color: #64748b; font-size: 12px; padding: 6px 12px; border: none; color: white; border-radius: 4px; cursor: pointer; width: auto; }
 
-    button { width: 100%; padding: 15px; background-color: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 20px; font-weight: bold; }
+    .btn-submit { width: 100%; padding: 15px; background-color: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 20px; font-weight: bold; }
     .status-box { text-align: center; padding: 15px; background-color: #d1fae5; border-radius: 8px; }
     .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
     .cancel-notice { font-size: 14px; color: #475569; text-align: center; margin-top: 15px; padding-top: 10px; border-top: 1px dashed #a7f3d0; font-weight: bold; }
@@ -80,9 +113,22 @@
 
     <div id="formContainer">
       <div class="input-group">
-        <div class="row-inputs">
+        <div>
           <input type="text" id="userName" class="input-name" placeholder="お名前（キーボード入力）">
-          <input type="number" id="userCount" class="input-count" value="1" min="1" placeholder="人数">
+        </div>
+
+        <!-- 人数選択エリア -->
+        <div>
+          <div class="count-selection-label">👥 人数を選択してください：</div>
+          <div class="count-btn-group" id="countBtnGroup" style="margin-top: 8px;">
+            <button type="button" class="count-btn active" data-value="1">1名</button>
+            <button type="button" class="count-btn" data-value="2">2名</button>
+            <button type="button" class="count-btn" data-value="3">3名</button>
+            <button type="button" class="count-btn" data-value="4">4名</button>
+            <button type="button" class="count-btn" data-value="more">5名以上</button>
+          </div>
+          <!-- 5名以上の時の詳細数値入力欄 -->
+          <input type="number" id="customUserCount" class="input-custom-count" placeholder="具体的な人数を入力（例: 5）" min="5" value="5" style="display: none;">
         </div>
 
         <!-- 手書きキャンバス -->
@@ -95,7 +141,7 @@
           </div>
         </div>
       </div>
-      <button onclick="registerName()">受付する</button>
+      <button type="button" class="btn-submit" onclick="registerName()">受付する</button>
     </div>
 
     <div class="cancel-notice">
@@ -149,6 +195,42 @@
   let shopStartHour = 9;
   let shopEndHour = 18;
   let maxPeopleLimit = 50;
+
+  // 人数選択ロジック
+  let selectedCountValue = "1";
+  const countBtns = document.querySelectorAll('.count-btn');
+  const customCountInput = document.getElementById('customUserCount');
+
+  countBtns.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      countBtns.forEach(b => b.classList.remove('active'));
+      e.target.classList.add('active');
+      selectedCountValue = e.target.getAttribute('data-value');
+
+      if (selectedCountValue === 'more') {
+        customCountInput.style.display = 'block';
+        customCountInput.focus();
+      } else {
+        customCountInput.style.display = 'none';
+      }
+    });
+  });
+
+  function getSelectedCount() {
+    if (selectedCountValue === 'more') {
+      const val = parseInt(customCountInput.value);
+      return (isNaN(val) || val < 1) ? 5 : val;
+    }
+    return parseInt(selectedCountValue);
+  }
+
+  function resetCountSelection() {
+    countBtns.forEach(b => b.classList.remove('active'));
+    countBtns[0].classList.add('active');
+    selectedCountValue = "1";
+    customCountInput.style.display = 'none';
+    customCountInput.value = '5';
+  }
 
   // 手書きキャンバスの設定
   const canvas = document.getElementById('sigCanvas');
@@ -276,9 +358,8 @@
     }
 
     const nameInput = document.getElementById('userName');
-    const countInput = document.getElementById('userCount');
     const name = nameInput.value.trim();
-    const count = parseInt(countInput.value) || 1;
+    const count = getSelectedCount();
     let nameImgData = null;
 
     if (hasDrawn) {
@@ -304,7 +385,7 @@
     });
 
     nameInput.value = '';
-    countInput.value = '1';
+    resetCountSelection();
     clearCanvas();
     Swal.fire({ icon: 'success', title: '受付完了', text: '受付が完了しました！' });
   };
