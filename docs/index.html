@@ -5,23 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>【ネット用】順番待ち受付</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
   <style>
     :root { --primary: #2563eb; --bg: #eff6ff; --card-bg: #ffffff; --text: #0f172a; }
     body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
     .container { max-width: 600px; margin: 0 auto; }
-    h1, h2 { text-align: center; color: var(--primary); }
+    
+    .header-title { text-align: center; color: var(--primary); margin-bottom: 20px; }
+    
     .card { background: var(--card-bg); padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
     .input-group { display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px; }
     
-    /* 入力エリアの調整 */
-    input[type="text"], input[type="number"] { 
-      padding: 12px; 
-      border: 2px solid #bfdbfe; 
-      border-radius: 8px; 
-      font-size: 18px; 
-      box-sizing: border-box;
+    /* 手書きキャンバス領域のスタイル */
+    .canvas-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
-    .input-name { width: 100%; }
+    .canvas-label { font-size: 14px; color: #1d4ed8; font-weight: bold; }
+    .canvas-wrapper {
+      position: relative;
+      border: 2px dashed #bfdbfe;
+      border-radius: 8px;
+      background-color: #f8fafc;
+      touch-action: none; /* スマホでのスクロール防止 */
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 120px;
+      border-radius: 8px;
+      cursor: crosshair;
+    }
+    .btn-clear {
+      align-self: flex-end;
+      padding: 6px 12px;
+      background-color: #64748b;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+    }
 
     /* 人数選択（ボタン＆数値入力）のスタイル */
     .count-selection-label { font-size: 14px; color: #1d4ed8; font-weight: bold; margin-bottom: -5px; }
@@ -48,9 +73,14 @@
     .input-custom-count {
       margin-top: 8px;
       width: 100%;
+      padding: 12px; 
+      border: 2px solid #bfdbfe; 
+      border-radius: 8px; 
+      font-size: 18px; 
+      box-sizing: border-box;
     }
 
-    .btn-submit { width: 100%; padding: 15px; background-color: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 20px; font-weight: bold; }
+    .btn-submit { width: 100%; padding: 15px; background-color: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 20px; font-weight: bold; margin-top: 10px; }
     .status-box { text-align: center; padding: 15px; background-color: #dbeafe; border-radius: 8px; }
     .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
     .limit-notice { background-color: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; }
@@ -70,6 +100,7 @@
     .badge-next { background-color: var(--primary); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; display: inline-block; }
     
     .customer-info { flex-grow: 1; display: flex; align-items: center; gap: 8px; }
+    .handwritten-img { height: 35px; vertical-align: middle; max-width: 150px; object-fit: contain; }
     .nobreak { white-space: nowrap; }
     .time-info { white-space: nowrap; flex-shrink: 0; }
 
@@ -88,10 +119,10 @@
 <body>
 
 <div class="container">
-  <h1>📱 オンライン順番待ち受付</h1>
+  <h1 class="header-title">📱 オンライン順番待ち受付</h1>
 
   <div class="card">
-    <h2>お名前と人数を入力してください</h2>
+    <h2>お名前（手書き）と人数を入力してください</h2>
     
     <div id="closedNotice" class="closed-notice" style="display: none;">
       本日の営業・受付はすべて終了いたしました。
@@ -103,8 +134,13 @@
 
     <div id="formContainer">
       <div class="input-group">
-        <div>
-          <input type="text" id="userName" class="input-name" placeholder="お名前">
+        <!-- 手書きサイン描画エリア -->
+        <div class="canvas-container">
+          <div class="canvas-label">✍️ お名前を枠内に手書きしてください：</div>
+          <div class="canvas-wrapper">
+            <canvas id="nameCanvas"></canvas>
+          </div>
+          <button type="button" class="btn-clear" onclick="clearCanvas()">描き直す（クリア）</button>
         </div>
 
         <!-- 人数選択エリア -->
@@ -166,7 +202,68 @@
   let shopEndHour = 18;
   let maxPeopleLimit = 50;
 
-  // 人数選択ロジック
+  // --- 手書きキャンバス制御 ---
+  const canvas = document.getElementById('nameCanvas');
+  const ctx = canvas.getContext('2d');
+  let isDrawing = false;
+  let hasDrawn = false;
+
+  function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#0f172a';
+  }
+
+  window.addEventListener('load', resizeCanvas);
+  window.addEventListener('resize', resizeCanvas);
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  }
+
+  function startDrawing(e) {
+    isDrawing = true;
+    hasDrawn = true;
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  }
+
+  function draw(e) {
+    if (!isDrawing) return;
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  }
+
+  function stopDrawing() {
+    isDrawing = false;
+  }
+
+  canvas.addEventListener('mousedown', startDrawing);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', stopDrawing);
+  canvas.addEventListener('mouseleave', stopDrawing);
+
+  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, { passive: false });
+  canvas.addEventListener('touchend', stopDrawing);
+
+  window.clearCanvas = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hasDrawn = false;
+  };
+
+  // --- 人数選択ロジック ---
   let selectedCountValue = "1";
   const countBtns = document.querySelectorAll('.count-btn');
   const customCountInput = document.getElementById('customUserCount');
@@ -242,7 +339,8 @@
       Object.keys(data).forEach(key => {
         const item = { 
           id: key, 
-          name: data[key].name, 
+          name: data[key].name || '', 
+          nameImage: data[key].nameImage || '', 
           count: data[key].count || 1, 
           status: data[key].status || 'waiting' 
         };
@@ -272,13 +370,12 @@
       return Swal.fire({ icon: 'error', title: '受付不可', text: '現在受付を行っておりません' });
     }
 
-    const nameInput = document.getElementById('userName');
-    const name = nameInput.value.trim();
-    const count = getSelectedCount();
-
-    if (!name) {
-      return Swal.fire({ icon: 'warning', title: '入力エラー', text: 'お名前を入力してください' });
+    if (!hasDrawn) {
+      return Swal.fire({ icon: 'warning', title: '入力エラー', text: '枠内にお名前を手書きしてください' });
     }
+
+    const nameImageData = canvas.toDataURL('image/png');
+    const count = getSelectedCount();
 
     const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0) + 
                         onHoldQueue.reduce((sum, item) => sum + item.count, 0);
@@ -287,13 +384,13 @@
     }
 
     push(queueRef, { 
-      name: name, 
+      nameImage: nameImageData,
       count: count, 
       status: 'waiting', 
       createdAt: serverTimestamp() 
     });
 
-    nameInput.value = '';
+    clearCanvas();
     resetCountSelection();
     Swal.fire({ icon: 'success', title: '受付完了', text: '順番待ちの申込みが完了しました！' });
   };
@@ -317,11 +414,16 @@
       currentQueue.forEach((item, index) => {
         const li = document.createElement('li');
 
+        // お名前表示用（画像 or テキスト）
+        const nameDisplay = item.nameImage 
+          ? `<img src="${item.nameImage}" class="handwritten-img" alt="お名前">` 
+          : `${item.name} 様`;
+
         if (index === 0) {
           li.classList.add('next-item');
           li.innerHTML = `
             <div class="customer-info">
-              <span class="badge-next">NEXT</span> 1番目: ${item.name} 様 <span class="nobreak">(${item.count}名)</span>
+              <span class="badge-next">NEXT</span> 1番目: ${nameDisplay} <span class="nobreak">(${item.count}名)</span>
             </div>
             <div class="time-info" style="color: #2563eb; font-weight: bold;">[まもなくご案内]</div>
           `;
@@ -329,7 +431,7 @@
           const waitMinutes = accumulatedPeople * timePerPerson;
           li.innerHTML = `
             <div class="customer-info">
-              ${index + 1}番目: ${item.name} 様 <span class="nobreak">(${item.count}名)</span>
+              ${index + 1}番目: ${nameDisplay} <span class="nobreak">(${item.count}名)</span>
             </div>
             <div class="time-info" style="color: #64748b;">（あと約 ${waitMinutes} 分）</div>
           `;
