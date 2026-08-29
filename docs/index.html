@@ -124,6 +124,18 @@
     .btn-submit:hover {
       background-color: var(--primary-hover);
     }
+    
+    .notice-message {
+      text-align: center;
+      padding: 16px;
+      background-color: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 15px;
+    }
+
     .status-box { text-align: center; padding: 12px; background-color: #dbeafe; border-radius: 8px; }
     .status-number { font-size: 32px; font-weight: bold; color: var(--primary); }
     
@@ -167,11 +179,15 @@
 <div class="container">
   <h1 class="header-title">📱 オンライン順番受付</h1>
 
-  <!-- 受付カード（OFFの時は完全に非表示） -->
+  <!-- 受付カード -->
   <div class="card" id="formCard">
-    <h3 style="margin-top: 0;">お名前と人数を入力してください</h3>
-    
+    <!-- メッセージ表示領域 -->
+    <div id="noticeContainer" class="notice-message" style="display: none;"></div>
+
+    <!-- フォーム入力エリア -->
     <div id="formContainer">
+      <h3 style="margin-top: 0;">お名前と人数を入力してください</h3>
+      
       <div class="input-group">
         <div>
           <div class="input-label">⌨️ お名前（文字入力）：</div>
@@ -247,6 +263,9 @@
   let timePerPerson = 20;
   let shopStartHour = 9;
   let shopEndHour = 18;
+  let netStartHour = 9;
+  let netEndHour = 18;
+  let maxQueueLimit = 0; // 0は上限なし
   let netBookingEnabled = true;
 
   const canvas = document.getElementById('nameCanvas');
@@ -364,20 +383,56 @@
     customCountInput.value = '5';
   }
 
+  // 受付状態・メッセージの判定ロジック
   function checkLimit() {
-    const now = new Date();
-    const currentHour = now.getHours();
     const formCard = document.getElementById('formCard');
+    const formContainer = document.getElementById('formContainer');
+    const noticeContainer = document.getElementById('noticeContainer');
 
-    const isShopOpen = (currentHour >= shopStartHour && currentHour < shopEndHour);
-
-    if (!isShopOpen || !netBookingEnabled) {
+    // 1. 【最優先】受付機能がオフの場合はカード自体を非表示（何も表示しない）
+    if (!netBookingEnabled) {
       if (formCard) formCard.style.display = 'none';
       return false;
-    } else {
-      if (formCard) formCard.style.display = 'block';
-      return true;
     }
+
+    // 受付機能がオンの場合はカードを表示状態にする
+    if (formCard) formCard.style.display = 'block';
+
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    const isShopOpen = (currentHour >= shopStartHour && currentHour < shopEndHour);
+    const isNetOpen = (currentHour >= netStartHour && currentHour < netEndHour);
+    const isLimitReached = (maxQueueLimit > 0 && currentQueue.length >= maxQueueLimit);
+
+    // 2. 人数が上限に達している場合
+    if (isLimitReached) {
+      formContainer.style.display = 'none';
+      noticeContainer.style.display = 'block';
+      noticeContainer.textContent = 'ただいま待ち人数が上限に達しているため、受付を一時停止しております。';
+      return false;
+    }
+
+    // 3. ネット受付時間外の場合
+    if (!isNetOpen) {
+      formContainer.style.display = 'none';
+      noticeContainer.style.display = 'block';
+      noticeContainer.textContent = 'ただいまオンライン受付時間外です。';
+      return false;
+    }
+
+    // 4. 営業時間外の場合
+    if (!isShopOpen) {
+      formContainer.style.display = 'none';
+      noticeContainer.style.display = 'block';
+      noticeContainer.textContent = '本日の営業は終了しているため、受付を行っておりません。';
+      return false;
+    }
+
+    // 5. すべて条件クリア（受付可能状態）
+    formContainer.style.display = 'block';
+    noticeContainer.style.display = 'none';
+    return true;
   }
 
   onValue(queueRef, (snapshot) => {
@@ -411,6 +466,12 @@
       if (data.shopStartHour !== undefined) shopStartHour = Number(data.shopStartHour);
       if (data.shopEndHour !== undefined) shopEndHour = Number(data.shopEndHour);
       
+      // ネット受付時間・上限数の設定項目
+      if (data.netStartHour !== undefined) netStartHour = Number(data.netStartHour);
+      if (data.netEndHour !== undefined) netEndHour = Number(data.netEndHour);
+      if (data.maxQueueLimit !== undefined) maxQueueLimit = Number(data.maxQueueLimit);
+
+      // 受付機能ON/OFFの判定
       if (data.netBookingEnabled !== undefined) {
         netBookingEnabled = Boolean(data.netBookingEnabled);
       } else if (data.isOnlineEnabled !== undefined) {
