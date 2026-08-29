@@ -3,22 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>店頭順番受付</title>
+  <title>店員用 管理画面</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <style>
     :root { 
-      --primary: #16a34a;
-      --primary-hover: #15803d;
-      --bg: #f0fdf4; 
+      --primary: #1e3a8a;
+      --primary-hover: #1e40af;
+      --bg: #f8fafc; 
       --card-bg: #ffffff; 
       --text: #0f172a; 
-      --border-color: #bbf7d0;
-      --hold-border: #f59e0b; 
+      --border-color: #cbd5e1;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
     }
     body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 16px; }
     
-    .container { max-width: 600px; margin: 0 auto; }
+    .container { max-width: 800px; margin: 0 auto; }
     .header-title { text-align: center; color: var(--primary); font-size: 24px; margin-bottom: 16px; }
     
     .card { 
@@ -29,12 +31,14 @@
       margin-bottom: 16px; 
       box-sizing: border-box;
     }
-    .input-group { display: flex; flex-direction: column; gap: 16px; margin-bottom: 12px; }
     
-    .input-label { font-size: 14px; color: #15803d; font-weight: bold; margin-bottom: 6px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
 
-    input[type="text"], input[type="number"] { 
-      padding: 12px; 
+    .input-label { font-size: 14px; color: var(--primary); font-weight: bold; margin-bottom: 6px; }
+
+    input[type="number"] { 
+      padding: 10px; 
       border: 2px solid var(--border-color); 
       border-radius: 8px; 
       font-size: 16px; 
@@ -42,198 +46,96 @@
       width: 100%;
     }
 
-    .canvas-container {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      padding-top: 10px;
-      border-top: 1px dashed var(--border-color);
-      width: 100%;
-      box-sizing: border-box;
-    }
-    
-    .canvas-wrapper {
-      position: relative;
-      border: 2px dashed var(--border-color);
-      border-radius: 8px;
-      background-color: #ffffff;
-      touch-action: none;
-      width: 100%; 
-      box-sizing: border-box;
-      overflow: hidden;
-    }
-    
-    canvas {
-      display: block;
-      width: 100%;
-      height: 120px;
-      cursor: crosshair;
-      touch-action: none;
-    }
-
-    .btn-clear {
-      align-self: flex-end;
-      padding: 6px 12px;
-      background-color: #64748b;
-      color: white;
+    .btn {
+      padding: 10px 16px;
       border: none;
       border-radius: 6px;
-      font-size: 13px;
-      cursor: pointer;
-    }
-
-    .count-selection-area {
-      padding-top: 10px;
-      border-top: 1px dashed var(--border-color);
-    }
-    .count-btn-group { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
-    .count-btn {
-      flex: 1;
-      min-width: 45px;
-      padding: 10px 4px;
-      background-color: #fff;
-      color: var(--primary);
-      border: 2px solid var(--border-color);
-      border-radius: 8px;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: bold;
       cursor: pointer;
-      text-align: center;
-      transition: all 0.2s;
+      color: white;
+      transition: background-color 0.2s;
     }
-    .count-btn.active {
-      background-color: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
-    .input-custom-count { margin-top: 8px; }
+    .btn-primary { background-color: var(--primary); }
+    .btn-primary:hover { background-color: var(--primary-hover); }
+    .btn-success { background-color: var(--success); }
+    .btn-warning { background-color: var(--warning); }
+    .btn-danger { background-color: var(--danger); }
 
-    .btn-submit { 
-      width: 100%; 
-      padding: 14px; 
-      background-color: var(--primary); 
-      color: white; 
-      border: none; 
-      border-radius: 8px; 
-      cursor: pointer; 
-      font-size: 18px; 
-      font-weight: bold; 
-      margin-top: 8px; 
-      box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
-    }
-    .btn-submit:hover {
-      background-color: var(--primary-hover);
-    }
-    .btn-submit:disabled {
-      background-color: #9ca3af;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
-
-    .status-box { text-align: center; padding: 12px; background-color: #dcfce7; border-radius: 8px; }
-    .status-number { font-size: 32px; font-weight: bold; color: var(--primary); }
-    
-    .notice-box { padding: 16px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 16px; }
-    .closed-notice { background-color: #f3f4f6; border: 1px solid #9ca3af; color: #374151; }
-    
     ul { list-style: none; padding: 0; margin: 0; }
     li { 
-      padding: 12px; 
+      padding: 14px; 
       border-bottom: 1px solid #e2e8f0; 
       display: flex; 
       justify-content: space-between; 
       align-items: center; 
-      gap: 8px;
-      font-size: 15px;
-      word-break: break-all;
+      gap: 12px;
+      font-size: 16px;
+      flex-wrap: wrap;
     }
-    li.next-item { font-weight: bold; background-color: #f0fdf4; border-radius: 6px; border-left: 5px solid var(--primary); }
-    li.hold-item { background-color: #fef3c7; border-radius: 6px; border-left: 5px solid var(--hold-border); margin-bottom: 6px; }
+    li:last-child { border-bottom: none; }
     
-    .badge-next { background-color: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 4px; }
-    .badge-hold { background-color: #d97706; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 4px; }
-    
-    .customer-info { flex-grow: 1; display: flex; align-items: center; gap: 6px; }
-    .handwritten-img { height: 35px; vertical-align: middle; max-width: 140px; object-fit: contain; }
-    .nobreak { white-space: nowrap; }
-    .time-info { white-space: nowrap; flex-shrink: 0; }
+    .customer-info { flex-grow: 1; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .handwritten-img { height: 40px; vertical-align: middle; max-width: 160px; object-fit: contain; }
+    .btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
 
-    .hold-section {
-      margin-top: 16px;
-      padding-top: 12px;
-      border-top: 2px dashed #fcd34d;
-    }
-    .hold-title {
-      font-size: 15px;
+    .badge-num {
+      background-color: var(--primary);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 6px;
       font-weight: bold;
-      color: #b45309;
-      margin-bottom: 8px;
+      font-size: 14px;
     }
+
+    .setting-row { margin-bottom: 12px; }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h1 class="header-title">✂ 店頭順番受付</h1>
+  <h1 class="header-title">📋 店舗用 順番管理画面</h1>
 
-  <div id="shopClosedNotice" class="notice-box closed-notice" style="display: none;">本日の受付は終了いたしました。</div>
-
-  <div class="card" id="formCard">
-    <h3 style="margin-top: 0;">お名前と人数を入力してください</h3>
-    
-    <div id="formContainer">
-      <div class="input-group">
-        <div>
-          <div class="input-label">⌨️ お名前（文字入力）：</div>
-          <input type="text" id="userName" placeholder="お名前を入力">
-        </div>
-
-        <div class="canvas-container">
-          <div class="input-label">✍️ 手書き（枠内にご記入ください）：</div>
-          <div class="canvas-wrapper">
-            <canvas id="nameCanvas"></canvas>
-          </div>
-          <button type="button" class="btn-clear" onclick="clearCanvas()">描き直す（クリア）</button>
-        </div>
-
-        <div class="count-selection-area">
-          <div class="input-label">👥 ご来店人数：</div>
-          <div class="count-btn-group" id="countBtnGroup">
-            <button type="button" class="count-btn active" data-value="1">1名</button>
-            <button type="button" class="count-btn" data-value="2">2名</button>
-            <button type="button" class="count-btn" data-value="3">3名</button>
-            <button type="button" class="count-btn" data-value="4">4名</button>
-            <button type="button" class="count-btn" data-value="more">5名以上</button>
-          </div>
-          <input type="number" id="customUserCount" class="input-custom-count" placeholder="人数を入力" min="5" value="5" style="display: none;">
-        </div>
+  <!-- 設定変更エリア -->
+  <div class="card">
+    <h3 style="margin-top: 0; color: var(--primary);">⚙️ 営業時間・所要時間の設定</h3>
+    <div class="grid-2">
+      <div class="setting-row">
+        <div class="input-label">1人あたりの所要時間（分）:</div>
+        <input type="number" id="settingTimePerPerson" min="1" value="20">
       </div>
-
-      <button type="button" class="btn-submit" onclick="registerName()">発券・受付する</button>
+      <div class="setting-row">
+        <div class="input-label">店頭受付 開始時間（時）:</div>
+        <input type="number" id="settingShopStartHour" min="0" max="23" value="9">
+      </div>
+      <div class="setting-row">
+        <div class="input-label">店頭受付 終了時間（時）:</div>
+        <input type="number" id="settingShopEndHour" min="0" max="23" value="18">
+      </div>
+      <div class="setting-row">
+        <div class="input-label">ネット予約 開始時間（時）:</div>
+        <input type="number" id="settingOnlineStartHour" min="0" max="23" value="10">
+      </div>
     </div>
+    <button type="button" class="btn btn-primary" style="margin-top: 10px; width: 100%;" onclick="saveSettings()">設定を保存する</button>
   </div>
 
+  <!-- 現在の待ちリスト -->
   <div class="card">
-    <h3 style="margin-top: 0;">現在の案内状況</h3>
-    <div class="status-box">
-      <div>現在の待ち状況</div>
-      <div class="status-number" id="totalWaiting">0 組 (0 人)</div>
-      <div>お渡し目安時間: 約 <span id="estimatedTime" style="font-weight: bold;">0</span> 分</div>
-    </div>
-    
-    <h4>待ちリスト</h4>
+    <h3 style="margin-top: 0;">⏳ 待ちリスト</h3>
     <ul id="waitingList"></ul>
+  </div>
 
-    <div class="hold-section" id="holdSection" style="display: none;">
-      <div class="hold-title">⚠️ お呼び出し時に不在の方（保留中）</div>
-      <ul id="holdList"></ul>
-    </div>
+  <!-- 保留中リスト -->
+  <div class="card">
+    <h3 style="margin-top: 0; color: var(--warning);">⚠️ 保留中リスト</h3>
+    <ul id="holdList"></ul>
   </div>
 </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getDatabase, ref, push, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  import { getDatabase, ref, onValue, update, remove, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBa1DxQOAAaPp6TZunW5XyX2iE95AQWYZc",
@@ -254,137 +156,8 @@
 
   let currentQueue = [];
   let onHoldQueue = [];
-  let timePerPerson = 20;
-  let shopStartHour = 9;
-  let shopEndHour = 18;
-  let onlineStartHour = 10;
 
-  const canvas = document.getElementById('nameCanvas');
-  const ctx = canvas.getContext('2d');
-  let isDrawing = false;
-  let hasDrawn = false;
-
-  // Retinaディスプレイ対応のキャンバスサイズ調整
-  function resizeCanvas() {
-    const rect = canvas.parentElement.getBoundingClientRect();
-    if (rect.width > 0) {
-      const dpr = window.devicePixelRatio || 1;
-      
-      canvas.style.width = rect.width + 'px';
-      canvas.style.height = '120px';
-      
-      canvas.width = rect.width * dpr;
-      canvas.height = 120 * dpr;
-      
-      ctx.scale(dpr, dpr);
-
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, rect.width, 120);
-
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = '#0f172a';
-    }
-  }
-
-  window.addEventListener('load', resizeCanvas);
-  window.addEventListener('resize', resizeCanvas);
-
-  function getPos(e) {
-    const rect = canvas.getBoundingClientRect();
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x: clientX - rect.left, y: clientY - rect.top };
-  }
-
-  function startDrawing(e) {
-    isDrawing = true;
-    hasDrawn = true;
-    const pos = getPos(e);
-    ctx.beginPath();
-    ctx.moveTo(pos.x, pos.y);
-  }
-
-  function draw(e) {
-    if (!isDrawing) return;
-    const pos = getPos(e);
-    ctx.lineTo(pos.x, pos.y);
-    ctx.stroke();
-  }
-
-  function stopDrawing() { isDrawing = false; }
-
-  canvas.addEventListener('mousedown', startDrawing);
-  canvas.addEventListener('mousemove', draw);
-  canvas.addEventListener('mouseup', stopDrawing);
-  canvas.addEventListener('mouseleave', stopDrawing);
-
-  canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, { passive: false });
-  canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, { passive: false });
-  canvas.addEventListener('touchend', stopDrawing);
-
-  window.clearCanvas = () => {
-    const rect = canvas.parentElement.getBoundingClientRect();
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, rect.width, 120);
-    hasDrawn = false;
-  };
-
-  let selectedCountValue = "1";
-  const countBtns = document.querySelectorAll('.count-btn');
-  const customCountInput = document.getElementById('customUserCount');
-
-  countBtns.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      countBtns.forEach(b => b.classList.remove('active'));
-      e.target.classList.add('active');
-      selectedCountValue = e.target.getAttribute('data-value');
-
-      if (selectedCountValue === 'more') {
-        customCountInput.style.display = 'block';
-        customCountInput.focus();
-      } else {
-        customCountInput.style.display = 'none';
-      }
-    });
-  });
-
-  function getSelectedCount() {
-    if (selectedCountValue === 'more') {
-      const val = parseInt(customCountInput.value);
-      return (isNaN(val) || val < 1) ? 5 : val;
-    }
-    return parseInt(selectedCountValue);
-  }
-
-  function resetCountSelection() {
-    countBtns.forEach(b => b.classList.remove('active'));
-    countBtns[0].classList.add('active');
-    selectedCountValue = "1";
-    customCountInput.style.display = 'none';
-    customCountInput.value = '5';
-  }
-
-  function checkLimit() {
-    const now = new Date();
-    const currentHour = now.getHours();
-
-    const formCard = document.getElementById('formCard');
-    const shopClosedEl = document.getElementById('shopClosedNotice');
-
-    const isShopOpen = (currentHour >= shopStartHour && currentHour < shopEndHour);
-
-    if (!isShopOpen) {
-      formCard.style.display = 'none';
-      shopClosedEl.style.display = 'block';
-      return false;
-    } else {
-      formCard.style.display = 'block';
-      shopClosedEl.style.display = 'none';
-      return true;
-    }
-  }
-
+  // キュー（予約データ）の監視
   onValue(queueRef, (snapshot) => {
     const data = snapshot.val();
     currentQueue = [];
@@ -397,7 +170,8 @@
           name: data[key].name || '', 
           nameImage: data[key].nameImage || '', 
           count: data[key].count || 1, 
-          status: data[key].status || 'waiting' 
+          status: data[key].status || 'waiting',
+          createdAt: data[key].createdAt || 0
         };
         if (item.status === 'hold') {
           onHoldQueue.push(item);
@@ -405,133 +179,130 @@
           currentQueue.push(item);
         }
       });
+      // 作成日時でソート
+      currentQueue.sort((a, b) => a.createdAt - b.createdAt);
+      onHoldQueue.sort((a, b) => a.createdAt - b.createdAt);
     }
     render();
   });
 
-  // 設定読み込みの修正（Numberキャストを追加）
+  // 設定の監視・読み込み
   onValue(settingsRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
-      if (data.timePerPerson !== undefined) timePerPerson = Number(data.timePerPerson);
-      if (data.shopStartHour !== undefined) shopStartHour = Number(data.shopStartHour);
-      if (data.shopEndHour !== undefined) shopEndHour = Number(data.shopEndHour);
-      if (data.onlineStartHour !== undefined) onlineStartHour = Number(data.onlineStartHour);
-      render();
+      if (data.timePerPerson !== undefined) document.getElementById('settingTimePerPerson').value = data.timePerPerson;
+      if (data.shopStartHour !== undefined) document.getElementById('settingShopStartHour').value = data.shopStartHour;
+      if (data.shopEndHour !== undefined) document.getElementById('settingShopEndHour').value = data.shopEndHour;
+      if (data.onlineStartHour !== undefined) document.getElementById('settingOnlineStartHour').value = data.onlineStartHour;
     }
   });
 
-  // 受付登録（連打防止処理付き）
-  window.registerName = async () => {
-    if (!checkLimit()) {
-      return Swal.fire({ icon: 'error', title: '受付時間外', text: '本日の営業は終了しております。' });
-    }
-
-    const textName = document.getElementById('userName').value.trim();
-
-    if (!textName && !hasDrawn) {
-      return Swal.fire({ icon: 'warning', title: '未入力', text: 'お名前を入力するか、手書きしてください。' });
-    }
-
-    const submitBtn = document.querySelector('.btn-submit');
-    submitBtn.disabled = true;
-
-    let payload = {
-      count: getSelectedCount(),
-      status: 'waiting',
-      createdAt: serverTimestamp()
-    };
-
-    if (hasDrawn) {
-      payload.nameImage = canvas.toDataURL('image/jpeg', 0.5);
-    } else {
-      payload.name = textName;
-    }
+  // 設定保存関数
+  window.saveSettings = async () => {
+    const timePerPerson = Number(document.getElementById('settingTimePerPerson').value);
+    const shopStartHour = Number(document.getElementById('settingShopStartHour').value);
+    const shopEndHour = Number(document.getElementById('settingShopEndHour').value);
+    const onlineStartHour = Number(document.getElementById('settingOnlineStartHour').value);
 
     try {
-      await push(queueRef, payload);
-
-      clearCanvas();
-      document.getElementById('userName').value = '';
-      resetCountSelection();
-      
-      Swal.fire({ icon: 'success', title: '受付完了', text: '順番待ちの受付が完了しました。', confirmButtonColor: '#16a34a' });
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'エラー', text: '送信に失敗しました。再度お試しください。' });
-    } finally {
-      submitBtn.disabled = false;
+      await set(settingsRef, {
+        timePerPerson,
+        shopStartHour,
+        shopEndHour,
+        onlineStartHour
+      });
+      Swal.fire({ icon: 'success', title: '保存完了', text: '設定を変更しました。', timer: 1500, showConfirmButton: false });
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'エラー', text: '保存に失敗しました。' });
     }
   };
 
+  // ステータス更新（案内完了や保留への変更）
+  window.updateStatus = async (id, status) => {
+    try {
+      if (status === 'completed') {
+        await remove(ref(db, `queue/${id}`));
+      } else {
+        await update(ref(db, `queue/${id}`), { status });
+      }
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'エラー', text: '操作に失敗しました。' });
+    }
+  };
+
+  // 削除確認
+  window.confirmDelete = (id) => {
+    Swal.fire({
+      title: '本当に削除しますか？',
+      text: "この操作は取り消せません。",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: '削除する',
+      cancelButtonText: 'キャンセル'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        remove(ref(db, `queue/${id}`));
+      }
+    });
+  };
+
+  // 画面描画
   function render() {
-    checkLimit();
-
-    const totalGroups = currentQueue.length;
-    const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0);
-
-    document.getElementById('totalWaiting').textContent = `${totalGroups} 組 (${totalPeople} 人)`;
-    document.getElementById('estimatedTime').textContent = totalPeople * timePerPerson;
-
-    const listElement = document.getElementById('waitingList');
-    listElement.innerHTML = '';
+    // 待ちリスト描画
+    const waitingListEl = document.getElementById('waitingList');
+    waitingListEl.innerHTML = '';
 
     if (currentQueue.length === 0) {
-      listElement.innerHTML = '<li>現在待ちなし</li>';
+      waitingListEl.innerHTML = '<li>現在待ちの件数はありません。</li>';
     } else {
-      let accumulatedPeople = 0;
       currentQueue.forEach((item, index) => {
         const li = document.createElement('li');
-
         const nameDisplay = item.nameImage 
           ? `<img src="${item.nameImage}" class="handwritten-img" alt="お名前">` 
-          : `${item.name} 様`;
-
-        if (index === 0) {
-          li.classList.add('next-item');
-          li.innerHTML = `
-            <div class="customer-info">
-              <span class="badge-next">NEXT</span> 1番目: ${nameDisplay} <span class="nobreak">(${item.count}名)</span>
-            </div>
-            <div class="time-info" style="color: #16a34a; font-weight: bold;">[まもなくご案内]</div>
-          `;
-        } else {
-          const waitMinutes = accumulatedPeople * timePerPerson;
-          li.innerHTML = `
-            <div class="customer-info">
-              ${index + 1}番目: ${nameDisplay} <span class="nobreak">(${item.count}名)</span>
-            </div>
-            <div class="time-info" style="color: #64748b;">（あと約 ${waitMinutes} 分）</div>
-          `;
-        }
-        listElement.appendChild(li);
-        accumulatedPeople += item.count;
-      });
-    }
-
-    const holdSection = document.getElementById('holdSection');
-    const holdListElement = document.getElementById('holdList');
-    holdListElement.innerHTML = '';
-
-    if (onHoldQueue.length > 0) {
-      holdSection.style.display = 'block';
-      onHoldQueue.forEach((item) => {
-        const li = document.createElement('li');
-        li.classList.add('hold-item');
-
-        const nameDisplay = item.nameImage 
-          ? `<img src="${item.nameImage}" class="handwritten-img" alt="お名前">` 
-          : `${item.name} 様`;
+          : `<strong>${item.name}</strong> 様`;
 
         li.innerHTML = `
           <div class="customer-info">
-            <span class="badge-hold">保留</span> ${nameDisplay} <span class="nobreak">(${item.count}名)</span>
+            <span class="badge-num">${index + 1}</span>
+            ${nameDisplay} (${item.count}名)
           </div>
-          <div class="time-info" style="color: #b45309; font-size: 13px;">戻られ次第ご案内</div>
+          <div class="btn-group">
+            <button class="btn btn-success" onclick="updateStatus('${item.id}', 'completed')">案内完了</button>
+            <button class="btn btn-warning" onclick="updateStatus('${item.id}', 'hold')">保留</button>
+            <button class="btn btn-danger" onclick="confirmDelete('${item.id}')">削除</button>
+          </div>
         `;
-        holdListElement.appendChild(li);
+        waitingListEl.appendChild(li);
       });
+    }
+
+    // 保留リスト描画
+    const holdListEl = document.getElementById('holdList');
+    holdListEl.innerHTML = '';
+
+    if (onHoldQueue.length === 0) {
+      holdListEl.innerHTML = '<li>現在保留中の件数はありません。</li>';
     } else {
-      holdSection.style.display = 'none';
+      onHoldQueue.forEach((item) => {
+        const li = document.createElement('li');
+        const nameDisplay = item.nameImage 
+          ? `<img src="${item.nameImage}" class="handwritten-img" alt="お名前">` 
+          : `<strong>${item.name}</strong> 様`;
+
+        li.innerHTML = `
+          <div class="customer-info">
+            ${nameDisplay} (${item.count}名)
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-primary" onclick="updateStatus('${item.id}', 'waiting')">待ちへ戻す</button>
+            <button class="btn btn-success" onclick="updateStatus('${item.id}', 'completed')">案内完了</button>
+            <button class="btn btn-danger" onclick="confirmDelete('${item.id}')">削除</button>
+          </div>
+        `;
+        holdListEl.appendChild(li);
+      });
     }
   }
 </script>
