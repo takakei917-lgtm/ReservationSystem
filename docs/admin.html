@@ -1,1095 +1,550 @@
 <!DOCTYPE html>
-
 <html lang="ja">
-
 <head>
-
   <meta charset="UTF-8">
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>【管理用】順番待ち管理</title>
-
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
   <style>
-
     /* 全体でサイズ計算を崩さないための設定 */
-
     *, *::before, *::after {
-
       box-sizing: border-box;
-
     }
-
-
 
     :root { --primary: #1e3a8a; --bg: #f8fafc; --card-bg: #ffffff; --text: #0f172a; }
-
     body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 15px; }
-
     .container { max-width: 600px; margin: 0 auto; width: 100%; }
-
     h1, h2 { text-align: center; color: #dc2626; margin-top: 0; }
-
     .card { background: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
-
     
-
     .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; }
-
     input[type="number"] { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; width: 70px; }
-
     
-
     /* トグルスイッチのスタイル */
-
     .switch-container {
-
       display: flex;
-
       align-items: center;
-
       justify-content: space-between;
-
       background: #ffffff;
-
       padding: 12px;
-
       border-radius: 8px;
-
       border: 1px solid #cbd5e1;
-
       margin-bottom: 15px;
-
     }
-
     .switch {
-
       position: relative;
-
       display: inline-block;
-
       width: 50px;
-
       height: 26px;
-
     }
-
     .switch input {
-
       opacity: 0;
-
       width: 0;
-
       height: 0;
-
     }
-
     .slider {
-
       position: absolute;
-
       cursor: pointer;
-
       top: 0; left: 0; right: 0; bottom: 0;
-
       background-color: #cbd5e1;
-
       transition: .3s;
-
       border-radius: 26px;
-
     }
-
     .slider:before {
-
       position: absolute;
-
       content: "";
-
       height: 20px;
-
       width: 20px;
-
       left: 3px;
-
       bottom: 3px;
-
       background-color: white;
-
       transition: .3s;
-
       border-radius: 50%;
-
     }
-
     input:checked + .slider {
-
       background-color: #16a34a;
-
     }
-
     input:checked + .slider:before {
-
       transform: translateX(24px);
-
     }
-
     .status-badge {
-
       font-weight: bold;
-
       padding: 4px 8px;
-
       border-radius: 4px;
-
       font-size: 14px;
-
     }
-
     .status-on { background-color: #dcfce7; color: #15803d; }
-
     .status-off { background-color: #fee2e2; color: #b91c1c; }
 
-
-
     /* 基本ボタン設定 */
-
     button { 
-
       padding: 8px 10px; 
-
       color: white; 
-
       border: none; 
-
       border-radius: 6px; 
-
       cursor: pointer; 
-
       font-size: 14px; 
-
       font-weight: bold; 
-
       touch-action: manipulation;
-
     }
-
     .btn-main { width: 100%; padding: 15px; font-size: 18px; margin-top: 10px; background-color: #dc2626; }
-
     
-
     /* 操作ボタンの固定幅設定 */
-
     .btn-cancel { background-color: #64748b; width: 68px; flex-shrink: 0; }
-
     .btn-hold { background-color: #f59e0b; width: 68px; flex-shrink: 0; }
-
     .btn-restore { background-color: #2563eb; width: 68px; flex-shrink: 0; }
-
     
-
     ul { list-style: none; padding: 0; margin: 0; }
-
     
-
     /* リスト構造のレスポンシブ化 */
-
     li { 
-
       padding: 12px 10px; 
-
       border-bottom: 1px solid #e2e8f0; 
-
       display: flex; 
-
       justify-content: space-between; 
-
       align-items: center; 
-
       gap: 10px; 
-
       width: 100%;
-
     }
-
     li:first-child { font-weight: bold; background-color: #fee2e2; border-radius: 6px; }
-
     
-
     /* 左側：名前・人数領域（画面幅に合わせて伸縮） */
-
     .customer-info {
-
       flex: 1 1 0%;
-
       min-width: 0;
-
       display: flex;
-
       align-items: center;
-
       flex-wrap: wrap;
-
       gap: 6px;
-
       word-break: break-word;
-
       line-height: 1.4;
-
     }
-
-
 
     /* 手書き名札画像 */
-
     .name-img {
-
       max-height: 40px;
-
       max-width: 100%;
-
       object-fit: contain;
-
       vertical-align: middle;
-
       border: 1px solid #e2e8f0;
-
       border-radius: 4px;
-
       background: #fff;
-
       cursor: zoom-in;
-
       transition: transform 0.1s ease;
-
     }
-
     .name-img:hover {
-
       transform: scale(1.05);
-
     }
-
     
-
     /* 人数カウント部分 */
-
     .count-text {
-
       white-space: nowrap;
-
       font-weight: normal;
-
       color: #475569;
-
     }
-
-
 
     /* 右側：ボタン領域（幅固定） */
-
     .btn-group {
-
       display: flex;
-
       gap: 6px;
-
       flex-shrink: 0;
-
     }
-
-
 
     .hold-card { border: 2px dashed #f59e0b; background-color: #fffbeeb0; }
-
     .setting-card { border: 1px solid #cbd5e1; background-color: #f1f5f9; }
-
     
-
     .daily-counter {
-
       text-align: center;
-
       background-color: #f1f5f9;
-
       padding: 12px;
-
       border-radius: 8px;
-
       margin-bottom: 10px;
-
       font-size: 16px;
-
     }
-
     .daily-counter span {
-
       font-size: 24px;
-
       font-weight: bold;
-
       color: #dc2626;
-
     }
-
-
 
     /* モーダル（画像拡大） */
-
     .modal-overlay {
-
       display: none;
-
       position: fixed;
-
       top: 0;
-
       left: 0;
-
       width: 100%;
-
       height: 100%;
-
       background: rgba(0, 0, 0, 0.7);
-
       z-index: 9999;
-
       justify-content: center;
-
       align-items: center;
-
       padding: 20px;
-
     }
-
     .modal-content {
-
       background: #ffffff;
-
       padding: 20px;
-
       border-radius: 12px;
-
       max-width: 90%;
-
       max-height: 80%;
-
       text-align: center;
-
       box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-
       position: relative;
-
     }
-
     .modal-img {
-
       max-width: 100%;
-
       max-height: 60vh;
-
       border: 1px solid #cbd5e1;
-
       border-radius: 8px;
-
       background: #ffffff;
-
       object-fit: contain;
-
     }
-
     .modal-close {
-
       position: absolute;
-
       top: 8px;
-
       right: 12px;
-
       font-size: 24px;
-
       color: #64748b;
-
       cursor: pointer;
-
       font-weight: bold;
-
       background: none;
-
       border: none;
-
       padding: 0;
-
     }
-
   </style>
-
 </head>
-
 <body>
 
-
-
 <div class="container">
-
   <h1>🔒 【店員専用】管理画面</h1>
 
-
-
   <div class="card">
-
     <h2>案内操作</h2>
-
     <div class="daily-counter">
-
       本日の施術完了人数: <span id="todayCountDisplay">0</span> 人
-
     </div>
-
     <button class="btn-main" onclick="nextCustomer()">1人 施術開始（先頭を減算/削除）</button>
-
   </div>
-
-
 
   <div class="card">
-
     <h2>現在の順番待ち一覧</h2>
-
     <ul id="waitingList"></ul>
-
   </div>
-
-
 
   <div class="card hold-card">
-
     <h2 style="color: #d97706; margin-top: 0;">⏳ 保留・ご不在一覧</h2>
-
     <ul id="holdList"></ul>
-
   </div>
-
-
 
   <div class="card setting-card">
-
     <h2 style="color: #475569;">⚙️ システム設定</h2>
-
     
-
     <!-- ネット受付機能 ON/OFF スイッチ -->
-
     <div class="switch-container">
-
       <div>
-
         <div style="font-weight: bold; font-size: 15px;">ネット受付機能</div>
-
         <div style="font-size: 12px; color: #64748b;">OFFにするとお客様画面は「順番閲覧のみ」になります</div>
-
       </div>
-
       <div style="display: flex; align-items: center; gap: 8px;">
-
         <span id="statusLabel" class="status-badge status-on">受付中</span>
-
         <label class="switch">
-
           <input type="checkbox" id="netBookingToggle" onchange="toggleNetBooking(this.checked)">
-
           <span class="slider"></span>
-
         </label>
-
       </div>
-
     </div>
 
-
-
     <div class="setting-row">
-
       <label>1人あたりの目安時間:</label>
-
       <div><input type="number" id="timePerPerson" value="20" min="1"> 分</div>
-
     </div>
-
     <div class="setting-row">
-
       <label>受付上限（最大人数）:</label>
-
       <div><input type="number" id="maxPeopleLimit" value="50" min="1"> 人</div>
-
     </div>
-
     <hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 15px 0;">
-
     <div class="setting-row">
-
       <label><b>店舗 営業開始時間</b>:</label>
-
       <div><input type="number" id="shopStartHour" value="9" min="0" max="23"> 時</div>
-
     </div>
-
     <div class="setting-row">
-
       <label><b>店舗 営業終了時間</b>:</label>
-
       <div><input type="number" id="shopEndHour" value="18" min="0" max="24"> 時</div>
-
     </div>
-
     <hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 15px 0;">
-
     <div class="setting-row">
-
       <label>ネット受付 開始時間:</label>
-
       <div><input type="number" id="startHour" value="10" min="0" max="23"> 時</div>
-
     </div>
-
     <div class="setting-row">
-
       <label>ネット受付 終了時間:</label>
-
       <div><input type="number" id="endHour" value="17" min="0" max="24"> 時</div>
-
     </div>
-
     <button style="width: 100%; background-color: #2563eb; margin-top: 10px;" onclick="saveSettings()">設定を保存</button>
-
   </div>
-
 </div>
-
-
 
 <!-- 画像拡大表示用モーダル -->
-
 <div id="imageModal" class="modal-overlay" onclick="closeModal()">
-
   <div class="modal-content" onclick="event.stopPropagation()">
-
     <button class="modal-close" onclick="closeModal()">✕</button>
-
     <h3 style="margin-top: 0; color: #1e3a8a;">✍️ 手書き名前（拡大）</h3>
-
     <img id="modalImage" class="modal-img" src="" alt="拡大表示">
-
     <div style="margin-top: 10px; font-size: 12px; color: #64748b;">※画面の背景または「✕」をクリックすると閉じます</div>
-
   </div>
-
 </div>
 
-
-
 <script type="module">
-
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-
   import { getDatabase, ref, onValue, remove, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-
-
   const firebaseConfig = {
-
     apiKey: "AIzaSyBa1DxQOAAaPp6TZunW5XyX2iE95AQWYZc",
-
     authDomain: "reservationsystem-a3e8d.firebaseapp.com",
-
     databaseURL: "https://reservationsystem-a3e8d-default-rtdb.firebaseio.com",
-
     projectId: "reservationsystem-a3e8d",
-
     storageBucket: "reservationsystem-a3e8d.firebasestorage.app",
-
     messagingSenderId: "362167708528",
-
     appId: "1:362167708528:web:b0fdbfca090f0b83eb7db5",
-
     measurementId: "G-FREYRL5GKT"
-
   };
-
-
 
   const app = initializeApp(firebaseConfig);
-
   const db = getDatabase(app);
 
-
-
   const queueRef = ref(db, 'queue');
-
   const settingsRef = ref(db, 'settings');
 
-
-
   const getTodayKey = () => {
-
     const today = new Date();
-
     const yyyy = today.getFullYear();
-
     const mm = String(today.getMonth() + 1).padStart(2, '0');
-
     const dd = String(today.getDate()).padStart(2, '0');
-
     return `${yyyy}-${mm}-${dd}`;
-
   };
-
-
 
   const todayKey = getTodayKey();
-
   const todayStatsRef = ref(db, `dailyStats/${todayKey}`);
 
-
-
   let currentQueue = [];
-
   let onHoldQueue = [];
-
   let todayCompletedCount = 0;
 
-
-
   window.openModal = (imgSrc) => {
-
     const modal = document.getElementById('imageModal');
-
     const modalImg = document.getElementById('modalImage');
-
     modalImg.src = imgSrc;
-
     modal.style.display = 'flex';
-
   };
-
-
 
   window.closeModal = () => {
-
     const modal = document.getElementById('imageModal');
-
     modal.style.display = 'none';
-
   };
-
-
 
   onValue(todayStatsRef, (snapshot) => {
-
     const data = snapshot.val();
-
     todayCompletedCount = (data && data.completedCount) ? data.completedCount : 0;
-
     document.getElementById('todayCountDisplay').textContent = todayCompletedCount;
-
   });
-
-
 
   onValue(queueRef, (snapshot) => {
-
     const data = snapshot.val();
-
     currentQueue = [];
-
     onHoldQueue = [];
 
-
-
     if (data) {
-
       Object.keys(data).forEach(key => {
-
         const item = { 
-
           id: key, 
-
           name: data[key].name, 
-
           nameImage: data[key].nameImage || null,
-
           count: data[key].count || 1, 
-
           status: data[key].status || 'waiting' 
-
         };
-
         if (item.status === 'hold') {
-
           onHoldQueue.push(item);
-
         } else {
-
           currentQueue.push(item);
-
         }
-
       });
-
     }
-
     render();
-
   });
-
-
 
   onValue(settingsRef, (snapshot) => {
-
     if (snapshot.exists()) {
-
       const data = snapshot.val();
-
-      if (data.timePerPerson) document.getElementById('timePerPerson').value = data.timePerPerson;
-
+      if (data.timePerPerson !== undefined) document.getElementById('timePerPerson').value = data.timePerPerson;
       if (data.maxPeopleLimit !== undefined) document.getElementById('maxPeopleLimit').value = data.maxPeopleLimit;
-
       if (data.shopStartHour !== undefined) document.getElementById('shopStartHour').value = data.shopStartHour;
-
       if (data.shopEndHour !== undefined) document.getElementById('shopEndHour').value = data.shopEndHour;
-
       if (data.startHour !== undefined) document.getElementById('startHour').value = data.startHour;
-
       if (data.endHour !== undefined) document.getElementById('endHour').value = data.endHour;
 
-
-
       // ネット受付フラグ（未設定時はデフォルトtrue）
-
       const isNetEnabled = data.netBookingEnabled !== undefined ? data.netBookingEnabled : true;
-
       document.getElementById('netBookingToggle').checked = isNetEnabled;
-
       updateStatusLabel(isNetEnabled);
-
     }
-
   });
 
-
-
   window.toggleNetBooking = (isEnabled) => {
-
     update(settingsRef, { netBookingEnabled: isEnabled });
-
     updateStatusLabel(isEnabled);
-
   };
-
-
 
   function updateStatusLabel(isEnabled) {
-
     const label = document.getElementById('statusLabel');
-
     if (isEnabled) {
-
       label.textContent = "受付中";
-
       label.className = "status-badge status-on";
-
     } else {
-
       label.textContent = "閲覧のみ";
-
       label.className = "status-badge status-off";
-
     }
-
   }
-
-
 
   window.saveSettings = () => {
-
-    const timeVal = parseInt(document.getElementById('timePerPerson').value) || 20;
-
-    const limitVal = parseInt(document.getElementById('maxPeopleLimit').value) || 50;
-
-    const shopStartVal = parseInt(document.getElementById('shopStartHour').value) || 9;
-
-    const shopEndVal = parseInt(document.getElementById('shopEndHour').value) || 18;
-
-    const startVal = parseInt(document.getElementById('startHour').value) || 10;
-
-    const endVal = parseInt(document.getElementById('endHour').value) || 17;
-
+    const timeVal = parseInt(document.getElementById('timePerPerson').value, 10);
+    const limitVal = parseInt(document.getElementById('maxPeopleLimit').value, 10);
+    const shopStartVal = parseInt(document.getElementById('shopStartHour').value, 10);
+    const shopEndVal = parseInt(document.getElementById('shopEndHour').value, 10);
+    const startVal = parseInt(document.getElementById('startHour').value, 10);
+    const endVal = parseInt(document.getElementById('endHour').value, 10);
     const isNetEnabled = document.getElementById('netBookingToggle').checked;
 
-
-
     set(settingsRef, {
-
-      timePerPerson: timeVal,
-
-      maxPeopleLimit: limitVal,
-
-      shopStartHour: shopStartVal,
-
-      shopEndHour: shopEndVal,
-
-      startHour: startVal,
-
-      endHour: endVal,
-
+      timePerPerson: isNaN(timeVal) ? 20 : timeVal,
+      maxPeopleLimit: isNaN(limitVal) ? 50 : limitVal,
+      shopStartHour: isNaN(shopStartVal) ? 9 : shopStartVal,
+      shopEndHour: isNaN(shopEndVal) ? 18 : shopEndVal,
+      startHour: isNaN(startVal) ? 10 : startVal,
+      endHour: isNaN(endVal) ? 17 : endVal,
       netBookingEnabled: isNetEnabled
-
+    }).then(() => {
+      Swal.fire({ icon: 'success', title: '設定完了', text: '設定を保存しました', timer: 1500, showConfirmButton: false });
+    }).catch((error) => {
+      Swal.fire({ icon: 'error', title: 'エラー', text: '設定の保存に失敗しました: ' + error.message });
     });
-
-    Swal.fire({ icon: 'success', title: '設定完了', text: '設定を保存しました', timer: 1500, showConfirmButton: false });
-
   };
-
-
 
   window.nextCustomer = () => {
-
     if (currentQueue.length === 0) {
-
       return Swal.fire({ icon: 'info', title: 'お知らせ', text: '待っているお客様はいません' });
-
     }
-
     const firstPerson = currentQueue[0];
 
-
-
     update(todayStatsRef, {
-
       completedCount: todayCompletedCount + 1
-
     });
-
-
 
     if (firstPerson.count > 1) {
-
       update(ref(db, `queue/${firstPerson.id}`), { count: firstPerson.count - 1 });
-
     } else {
-
       remove(ref(db, `queue/${firstPerson.id}`));
-
     }
-
   };
-
-
 
   window.holdCustomer = (id, name) => {
-
     Swal.fire({
-
       title: '確認',
-
       text: `${name} 様を保留にしますか？`,
-
       icon: 'warning',
-
       showCancelButton: true,
-
       confirmButtonText: '保留にする',
-
       cancelButtonText: 'キャンセル'
-
     }).then((result) => {
-
       if (result.isConfirmed) {
-
         update(ref(db, `queue/${id}`), { status: 'hold' });
-
       }
-
     });
-
   };
-
-
 
   window.restoreCustomer = (id, name) => {
-
     Swal.fire({
-
       title: '確認',
-
       text: `${name} 様を通常の待ち列（最後尾）へ戻しますか？`,
-
       icon: 'question',
-
       showCancelButton: true,
-
       confirmButtonText: '戻す',
-
       cancelButtonText: 'キャンセル'
-
     }).then((result) => {
-
       if (result.isConfirmed) {
-
         update(ref(db, `queue/${id}`), { status: 'waiting', createdAt: serverTimestamp() });
-
       }
-
     });
-
   };
-
-
 
   window.cancelCustomer = (id, name) => {
-
     Swal.fire({
-
       title: '削除の確認',
-
       text: `${name} 様の予約をキャンセル（削除）しますか？`,
-
       icon: 'error',
-
       showCancelButton: true,
-
       confirmButtonColor: '#dc2626',
-
       confirmButtonText: '削除する',
-
       cancelButtonText: 'キャンセル'
-
     }).then((result) => {
-
       if (result.isConfirmed) {
-
         remove(ref(db, `queue/${id}`));
-
       }
-
     });
-
   };
 
-
-
   function renderNameHTML(item) {
-
     if (item.nameImage) {
-
       return `<img src="${item.nameImage}" class="name-img" alt="手書き名" onclick="openModal('${item.nameImage}')" title="クリックで拡大"> 様`;
-
     }
-
     return `${item.name} 様`;
-
   }
-
-
 
   function render() {
-
     const listElement = document.getElementById('waitingList');
-
     listElement.innerHTML = '';
 
-
-
     if (currentQueue.length === 0) {
-
       listElement.innerHTML = '<li>現在待ちなし</li>';
-
     } else {
-
       currentQueue.forEach((item, index) => {
-
         const li = document.createElement('li');
-
         const nameDisp = renderNameHTML(item);
-
         li.innerHTML = `
-
           <div class="customer-info">
-
             <span>${index + 1}番目:</span> ${nameDisp} <span class="count-text">（${item.count}名）</span>
-
           </div>
-
           <div class="btn-group">
-
             <button class="btn-hold" onclick="holdCustomer('${item.id}', '${item.name}')">保留</button>
-
             <button class="btn-cancel" onclick="cancelCustomer('${item.id}', '${item.name}')">取消</button>
-
           </div>
-
         `;
-
         listElement.appendChild(li);
-
       });
-
     }
-
-
 
     const holdListElement = document.getElementById('holdList');
-
     holdListElement.innerHTML = '';
 
-
-
     if (onHoldQueue.length === 0) {
-
       holdListElement.innerHTML = '<li style="background:none;">現在保留なし</li>';
-
     } else {
-
       onHoldQueue.forEach((item) => {
-
         const li = document.createElement('li');
-
         const nameDisp = renderNameHTML(item);
-
         li.style.backgroundColor = '#ffffff';
-
         li.innerHTML = `
-
           <div class="customer-info">
-
             ${nameDisp} <span class="count-text">（${item.count}名）</span>
-
           </div>
-
           <div class="btn-group">
-
             <button class="btn-restore" onclick="restoreCustomer('${item.id}', '${item.name}')">戻す</button>
-
             <button class="btn-cancel" onclick="cancelCustomer('${item.id}', '${item.name}')">取消</button>
-
           </div>
-
         `;
-
         holdListElement.appendChild(li);
-
       });
-
     }
-
   }
-
 </script>
-
 </body>
-
-</html> 
-
-
+</html>
