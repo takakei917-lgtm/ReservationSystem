@@ -3,25 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>【ネット予約】順番待ち受付</title>
+  <title>オンライン順番待ち受付</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <style>
-    :root { --primary: #0284c7; --bg: #f0f9ff; --card-bg: #ffffff; --text: #0f172a; }
-    body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+    :root { --primary: #0284c7; --bg: #f0f9ff; --card-bg: #ffffff; --text: #0f172a; --hold-border: #f59e0b; }
+    body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 16px; }
     
-    .container { max-width: 600px; margin: 0 auto; }
-    .header-title { text-align: center; color: var(--primary); margin-bottom: 20px; }
+    .container { max-width: 500px; margin: 0 auto; }
+    .header-title { text-align: center; color: var(--primary); font-size: 24px; margin-bottom: 16px; }
     
     .card { 
       background: var(--card-bg); 
-      padding: 24px; 
+      padding: 20px; 
       border-radius: 12px; 
       box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); 
-      margin-bottom: 20px; 
+      margin-bottom: 16px; 
       box-sizing: border-box;
     }
-    .input-group { display: flex; flex-direction: column; gap: 20px; margin-bottom: 15px; }
+    .input-group { display: flex; flex-direction: column; gap: 16px; margin-bottom: 12px; }
     
     .input-label { font-size: 14px; color: #0369a1; font-weight: bold; margin-bottom: 6px; }
 
@@ -29,7 +29,7 @@
       padding: 12px; 
       border: 2px solid #bae6fd; 
       border-radius: 8px; 
-      font-size: 18px; 
+      font-size: 16px; 
       box-sizing: border-box;
       width: 100%;
     }
@@ -77,16 +77,16 @@
       padding-top: 10px;
       border-top: 1px dashed #bae6fd;
     }
-    .count-btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .count-btn-group { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
     .count-btn {
       flex: 1;
-      min-width: 50px;
-      padding: 12px 5px;
+      min-width: 45px;
+      padding: 10px 4px;
       background-color: #fff;
       color: var(--primary);
       border: 2px solid #bae6fd;
       border-radius: 8px;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: bold;
       cursor: pointer;
       text-align: center;
@@ -99,36 +99,63 @@
     }
     .input-custom-count { margin-top: 8px; }
 
-    .btn-submit { width: 100%; padding: 15px; background-color: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 20px; font-weight: bold; margin-top: 10px; }
-    .status-box { text-align: center; padding: 15px; background-color: #e0f2fe; border-radius: 8px; }
-    .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
+    .btn-submit { 
+      width: 100%; 
+      padding: 14px; 
+      background-color: var(--primary); 
+      color: white; 
+      border: none; 
+      border-radius: 8px; 
+      cursor: pointer; 
+      font-size: 18px; 
+      font-weight: bold; 
+      margin-top: 8px; 
+    }
+    .status-box { text-align: center; padding: 12px; background-color: #e0f2fe; border-radius: 8px; }
+    .status-number { font-size: 32px; font-weight: bold; color: var(--primary); }
     
-    .notice-box { padding: 20px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 18px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .notice-box { padding: 16px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 16px; }
     .limit-notice { background-color: #fee2e2; border: 1px solid #ef4444; color: #991b1b; }
     .closed-notice { background-color: #f3f4f6; border: 1px solid #9ca3af; color: #374151; }
     .shop-closed-notice { background-color: #e2e8f0; border: 1px solid #64748b; color: #1e293b; }
     
-    ul { list-style: none; padding: 0; }
+    ul { list-style: none; padding: 0; margin: 0; }
     li { 
       padding: 12px; 
       border-bottom: 1px solid #e2e8f0; 
       display: flex; 
       justify-content: space-between; 
       align-items: center; 
-      gap: 10px;
+      gap: 8px;
+      font-size: 15px;
       word-break: break-all;
     }
     li.next-item { font-weight: bold; background-color: #f0f9ff; border-radius: 6px; border-left: 5px solid var(--primary); }
-    .badge-next { background-color: var(--primary); color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; display: inline-block; }
+    li.hold-item { background-color: #fef3c7; border-radius: 6px; border-left: 5px solid var(--hold-border); margin-bottom: 6px; }
     
-    .customer-info { flex-grow: 1; display: flex; align-items: center; gap: 8px; }
-    .handwritten-img { height: 35px; vertical-align: middle; max-width: 150px; object-fit: contain; }
+    .badge-next { background-color: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 4px; }
+    .badge-hold { background-color: #d97706; color: white; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 4px; }
+    
+    .customer-info { flex-grow: 1; display: flex; align-items: center; gap: 6px; }
+    .handwritten-img { height: 35px; vertical-align: middle; max-width: 140px; object-fit: contain; }
     .nobreak { white-space: nowrap; }
     .time-info { white-space: nowrap; flex-shrink: 0; }
 
+    .hold-section {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 2px dashed #fcd34d;
+    }
+    .hold-title {
+      font-size: 15px;
+      font-weight: bold;
+      color: #b45309;
+      margin-bottom: 8px;
+    }
+
     @media (max-width: 480px) {
       li { flex-direction: column; align-items: flex-start; }
-      .time-info { align-self: flex-end; font-size: 14px; }
+      .time-info { align-self: flex-end; font-size: 13px; }
     }
   </style>
 </head>
@@ -137,14 +164,12 @@
 <div class="container">
   <h1 class="header-title">📱 オンライン順番待ち受付</h1>
 
-  <!-- 各状態に対応するメッセージ表示領域 -->
   <div id="shopClosedNotice" class="notice-box shop-closed-notice" style="display: none;">本日の営業は終了いたしました。</div>
   <div id="closedNotice" class="notice-box closed-notice" style="display: none;">本日のネット予約受付時間は終了いたしました。</div>
-  <div id="limitNotice" class="notice-box limit-notice" style="display: none;">受付上限人数（<span id="maxLimitDisplay">50</span>名）に達したため、現在の受付は一時的に終了いたしました。</div>
+  <div id="limitNotice" class="notice-box limit-notice" style="display: none;">受付上限人数（<span id="maxLimitDisplay">50</span>名）に達したため、現在のネット受付は一時停止しております。</div>
 
-  <!-- 受付用フォームカード -->
   <div class="card" id="formCard">
-    <h2>お名前と人数を入力してください</h2>
+    <h3 style="margin-top: 0;">お名前と人数を入力</h3>
     
     <div id="formContainer">
       <div class="input-group">
@@ -154,7 +179,7 @@
         </div>
 
         <div class="canvas-container">
-          <div class="input-label">✍️ 手書きの場合はこちら（枠内にご記入）：</div>
+          <div class="input-label">✍️ 手書き（枠内にご記入）：</div>
           <div class="canvas-wrapper">
             <canvas id="nameCanvas"></canvas>
           </div>
@@ -162,7 +187,7 @@
         </div>
 
         <div class="count-selection-area">
-          <div class="input-label">👥 人数を選択してください：</div>
+          <div class="input-label">👥 人数を選択：</div>
           <div class="count-btn-group" id="countBtnGroup">
             <button type="button" class="count-btn active" data-value="1">1名</button>
             <button type="button" class="count-btn" data-value="2">2名</button>
@@ -170,7 +195,7 @@
             <button type="button" class="count-btn" data-value="4">4名</button>
             <button type="button" class="count-btn" data-value="more">5名以上</button>
           </div>
-          <input type="number" id="customUserCount" class="input-custom-count" placeholder="具体的な人数を入力（例: 5）" min="5" value="5" style="display: none;">
+          <input type="number" id="customUserCount" class="input-custom-count" placeholder="具体的な人数を入力" min="5" value="5" style="display: none;">
         </div>
       </div>
 
@@ -179,15 +204,20 @@
   </div>
 
   <div class="card">
-    <h2>現在の案内状況</h2>
+    <h3 style="margin-top: 0;">現在の案内状況</h3>
     <div class="status-box">
       <div>現在の待ち人数</div>
       <div class="status-number" id="totalWaiting">0 組 (0 人)</div>
-      <div>全体の残り予想時間: 約 <span id="estimatedTime" style="font-weight: bold;">0</span> 分</div>
+      <div>予想待ち時間: 約 <span id="estimatedTime" style="font-weight: bold;">0</span> 分</div>
     </div>
     
-    <h3>現在の待ちリスト</h3>
+    <h4>待ちリスト</h4>
     <ul id="waitingList"></ul>
+
+    <div class="hold-section" id="holdSection" style="display: none;">
+      <div class="hold-title">⚠️ お呼び出し時に不在の方（保留中）</div>
+      <ul id="holdList"></ul>
+    </div>
   </div>
 </div>
 
@@ -233,7 +263,6 @@
       canvas.width = rect.width;
       canvas.height = 120;
       
-      // 背景を白で塗りつぶす（画像の黒化を防止）
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -279,7 +308,6 @@
   canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, { passive: false });
   canvas.addEventListener('touchend', stopDrawing);
 
-  // クリア時も白で塗りつぶす
   window.clearCanvas = () => {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -338,32 +366,26 @@
     const isShopOpen = (currentHour >= shopStartHour && currentHour < shopEndHour);
     const isNetOpen = (currentHour >= startHour && currentHour < endHour);
 
-    // すべての要素を一旦初期化（非表示）
     formCard.style.display = 'none';
     shopClosedEl.style.display = 'none';
     closedEl.style.display = 'none';
     limitEl.style.display = 'none';
 
-    // 1. 最優先：ネット予約自体がOFF
     if (netBookingEnabled === false) {
       return false;
     } 
-    // 2. 営業時間外
     else if (!isShopOpen) {
       shopClosedEl.style.display = 'block';
       return false;
     } 
-    // 3. ネット受付時間外
     else if (!isNetOpen) {
       closedEl.style.display = 'block';
       return false;
     } 
-    // 4. 人数上限オーバー
     else if (totalPeople >= maxPeopleLimit) {
       limitEl.style.display = 'block';
       return false;
     } 
-    // 5. 通常受付中
     else {
       formCard.style.display = 'block';
       return true;
@@ -386,7 +408,7 @@
         };
         if (item.status === 'hold') {
           onHoldQueue.push(item);
-        } else {
+        } else if (item.status === 'waiting') {
           currentQueue.push(item);
         }
       });
@@ -416,13 +438,13 @@
 
   window.registerName = () => {
     if (!checkLimit()) {
-      return Swal.fire({ icon: 'error', title: '受付不可', text: '現在ネット受付を行っておりません' });
+      return Swal.fire({ icon: 'error', title: '受付不可', text: '現在ネット受付を行っておりません。' });
     }
 
     const textName = document.getElementById('userName').value.trim();
 
     if (!textName && !hasDrawn) {
-      return Swal.fire({ icon: 'warning', title: '入力エラー', text: 'お名前を入力するか、枠内に手書きしてください' });
+      return Swal.fire({ icon: 'warning', title: '入力エラー', text: 'お名前を入力するか、枠内に手書きしてください。' });
     }
 
     let payload = {
@@ -448,7 +470,7 @@
     clearCanvas();
     document.getElementById('userName').value = '';
     resetCountSelection();
-    Swal.fire({ icon: 'success', title: '受付完了', text: 'ネットからの順番待ち申込みが完了しました！', confirmButtonColor: '#0284c7' });
+    Swal.fire({ icon: 'success', title: '受付完了', text: 'ネットからの申込みが完了しました！', confirmButtonColor: '#0284c7' });
   };
 
   function render() {
@@ -494,6 +516,32 @@
         listElement.appendChild(li);
         accumulatedPeople += item.count;
       });
+    }
+
+    const holdSection = document.getElementById('holdSection');
+    const holdListElement = document.getElementById('holdList');
+    holdListElement.innerHTML = '';
+
+    if (onHoldQueue.length > 0) {
+      holdSection.style.display = 'block';
+      onHoldQueue.forEach((item) => {
+        const li = document.createElement('li');
+        li.classList.add('hold-item');
+
+        const nameDisplay = item.nameImage 
+          ? `<img src="${item.nameImage}" class="handwritten-img" alt="お名前">` 
+          : `${item.name} 様`;
+
+        li.innerHTML = `
+          <div class="customer-info">
+            <span class="badge-hold">保留</span> ${nameDisplay} <span class="nobreak">(${item.count}名)</span>
+          </div>
+          <div class="time-info" style="color: #b45309; font-size: 13px;">戻られ次第ご案内</div>
+        `;
+        holdListElement.appendChild(li);
+      });
+    } else {
+      holdSection.style.display = 'none';
     }
   }
 </script>
