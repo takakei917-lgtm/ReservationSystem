@@ -296,7 +296,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getDatabase, ref, onValue, remove, set, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+  import { getDatabase, ref, onValue, remove, update, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyBa1DxQOAAaPp6TZunW5XyX2iE95AQWYZc",
@@ -372,17 +372,25 @@
     render();
   });
 
+  // 初回のみ設定を入力欄に同期するフラグ（編集中の勝手な書き換えを防止）
+  let isSettingsLoaded = false;
+
   onValue(settingsRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
-      if (data.timePerPerson) document.getElementById('timePerPerson').value = data.timePerPerson;
-      if (data.maxPeopleLimit !== undefined) document.getElementById('maxPeopleLimit').value = data.maxPeopleLimit;
-      if (data.shopStartHour !== undefined) document.getElementById('shopStartHour').value = data.shopStartHour;
-      if (data.shopEndHour !== undefined) document.getElementById('shopEndHour').value = data.shopEndHour;
-      if (data.startHour !== undefined) document.getElementById('startHour').value = data.startHour;
-      if (data.endHour !== undefined) document.getElementById('endHour').value = data.endHour;
+      
+      // 初回表示時のみ画面に入力値をセット
+      if (!isSettingsLoaded) {
+        if (data.timePerPerson !== undefined) document.getElementById('timePerPerson').value = data.timePerPerson;
+        if (data.maxPeopleLimit !== undefined) document.getElementById('maxPeopleLimit').value = data.maxPeopleLimit;
+        if (data.shopStartHour !== undefined) document.getElementById('shopStartHour').value = data.shopStartHour;
+        if (data.shopEndHour !== undefined) document.getElementById('shopEndHour').value = data.shopEndHour;
+        if (data.startHour !== undefined) document.getElementById('startHour').value = data.startHour;
+        if (data.endHour !== undefined) document.getElementById('endHour').value = data.endHour;
+        isSettingsLoaded = true;
+      }
 
-      // ネット受付フラグ（未設定時はデフォルトtrue）
+      // トグルスイッチの状態は常にリアルタイム同期
       const isNetEnabled = data.netBookingEnabled !== undefined ? data.netBookingEnabled : true;
       document.getElementById('netBookingToggle').checked = isNetEnabled;
       updateStatusLabel(isNetEnabled);
@@ -405,6 +413,7 @@
     }
   }
 
+  // 設定の安全な保存処理（setではなくupdateを使用）
   window.saveSettings = () => {
     const timeVal = parseInt(document.getElementById('timePerPerson').value) || 20;
     const limitVal = parseInt(document.getElementById('maxPeopleLimit').value) || 50;
@@ -414,7 +423,7 @@
     const endVal = parseInt(document.getElementById('endHour').value) || 17;
     const isNetEnabled = document.getElementById('netBookingToggle').checked;
 
-    set(settingsRef, {
+    update(settingsRef, {
       timePerPerson: timeVal,
       maxPeopleLimit: limitVal,
       shopStartHour: shopStartVal,
@@ -422,8 +431,12 @@
       startHour: startVal,
       endHour: endVal,
       netBookingEnabled: isNetEnabled
+    }).then(() => {
+      Swal.fire({ icon: 'success', title: '設定完了', text: '設定を保存しました', timer: 1500, showConfirmButton: false });
+    }).catch((error) => {
+      console.error("保存失敗:", error);
+      Swal.fire({ icon: 'error', title: 'エラー', text: '設定の保存に失敗しました' });
     });
-    Swal.fire({ icon: 'success', title: '設定完了', text: '設定を保存しました', timer: 1500, showConfirmButton: false });
   };
 
   window.nextCustomer = () => {
@@ -511,8 +524,8 @@
             <span>${index + 1}番目:</span> ${nameDisp} <span class="count-text">（${item.count}名）</span>
           </div>
           <div class="btn-group">
-            <button class="btn-hold" onclick="holdCustomer('${item.id}', '${item.name}')">保留</button>
-            <button class="btn-cancel" onclick="cancelCustomer('${item.id}', '${item.name}')">取消</button>
+            <button class="btn-hold" onclick="holdCustomer('${item.id}', '${item.name || '手書き'}')">保留</button>
+            <button class="btn-cancel" onclick="cancelCustomer('${item.id}', '${item.name || '手書き'}')">取消</button>
           </div>
         `;
         listElement.appendChild(li);
@@ -534,8 +547,8 @@
             ${nameDisp} <span class="count-text">（${item.count}名）</span>
           </div>
           <div class="btn-group">
-            <button class="btn-restore" onclick="restoreCustomer('${item.id}', '${item.name}')">戻す</button>
-            <button class="btn-cancel" onclick="cancelCustomer('${item.id}', '${item.name}')">取消</button>
+            <button class="btn-restore" onclick="restoreCustomer('${item.id}', '${item.name || '手書き'}')">戻す</button>
+            <button class="btn-cancel" onclick="cancelCustomer('${item.id}', '${item.name || '手書き'}')">取消</button>
           </div>
         `;
         holdListElement.appendChild(li);
