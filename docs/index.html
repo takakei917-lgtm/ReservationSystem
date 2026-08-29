@@ -261,11 +261,13 @@
   let currentQueue = [];
   let onHoldQueue = [];
   let timePerPerson = 20;
-  let shopStartHour = 9;
-  let shopEndHour = 18;
-  let netStartHour = 9;
-  let netEndHour = 18;
-  let maxQueueLimit = 0; // 0は上限なし
+  
+  // デフォルト値（0〜24で初期化）
+  let shopStartHour = 0;
+  let shopEndHour = 24;
+  let netStartHour = 0;
+  let netEndHour = 24;
+  let maxQueueLimit = 0;
   let netBookingEnabled = true;
 
   const canvas = document.getElementById('nameCanvas');
@@ -383,45 +385,51 @@
     customCountInput.value = '5';
   }
 
-  // 受付状態・メッセージの判定ロジック
+  // 時間内判定ロジック（0時〜24時・深夜帯 完全修正）
   function checkLimit() {
     const formCard = document.getElementById('formCard');
     const formContainer = document.getElementById('formContainer');
     const noticeContainer = document.getElementById('noticeContainer');
 
-    // 1. 【最優先】受付機能がオフの場合はカード自体を非表示（何も表示しない）
+    // 1. オンライン受付スイッチがOFFなら非表示
     if (!netBookingEnabled) {
       if (formCard) formCard.style.display = 'none';
       return false;
     }
-
-    // 受付機能がオンの場合はカードを表示状態にする
     if (formCard) formCard.style.display = 'block';
 
     const now = new Date();
-    const currentHour = now.getHours();
+    const currentMin = now.getHours() * 60 + now.getMinutes();
 
-    const isShopOpen = (currentHour >= shopStartHour && currentHour < shopEndHour);
-    const isNetOpen = (currentHour >= netStartHour && currentHour < netEndHour);
+    const sStart = Number(shopStartHour);
+    const sEnd = Number(shopEndHour);
+    const nStart = Number(netStartHour);
+    const nEnd = Number(netEndHour);
+
+    // 時間チェック関数
+    function checkTime(startHour, endHour) {
+      // 0時〜24時（または同じ値設定）は常に営業中と判定
+      if ((startHour === 0 && endHour >= 24) || (startHour === 0 && endHour === 0)) {
+        return true;
+      }
+
+      const startMin = startHour * 60;
+      let endMin = endHour * 60;
+
+      // 日を跨ぐ場合（例: 22時〜翌2時 などで endHour が startHour より小さい）
+      if (startHour > endHour) {
+        return (currentMin >= startMin || currentMin < endMin);
+      }
+
+      // 通常の時間帯
+      return (currentMin >= startMin && currentMin < endMin);
+    }
+
+    const isShopOpen = checkTime(sStart, sEnd);
+    const isNetOpen = checkTime(nStart, nEnd);
     const isLimitReached = (maxQueueLimit > 0 && currentQueue.length >= maxQueueLimit);
 
-    // 2. 人数が上限に達している場合
-    if (isLimitReached) {
-      formContainer.style.display = 'none';
-      noticeContainer.style.display = 'block';
-      noticeContainer.textContent = 'ただいま待ち人数が上限に達しているため、受付を一時停止しております。';
-      return false;
-    }
-
-    // 3. ネット受付時間外の場合
-    if (!isNetOpen) {
-      formContainer.style.display = 'none';
-      noticeContainer.style.display = 'block';
-      noticeContainer.textContent = 'ただいまオンライン受付時間外です。';
-      return false;
-    }
-
-    // 4. 営業時間外の場合
+    // 営業時間外
     if (!isShopOpen) {
       formContainer.style.display = 'none';
       noticeContainer.style.display = 'block';
@@ -429,7 +437,23 @@
       return false;
     }
 
-    // 5. すべて条件クリア（受付可能状態）
+    // ネット受付時間外
+    if (!isNetOpen) {
+      formContainer.style.display = 'none';
+      noticeContainer.style.display = 'block';
+      noticeContainer.textContent = 'ただいまオンライン受付時間外です。';
+      return false;
+    }
+
+    // 人数制限
+    if (isLimitReached) {
+      formContainer.style.display = 'none';
+      noticeContainer.style.display = 'block';
+      noticeContainer.textContent = 'ただいま待ち人数が上限に達しているため、受付を一時停止しております。';
+      return false;
+    }
+
+    // すべてOK（フォーム表示）
     formContainer.style.display = 'block';
     noticeContainer.style.display = 'none';
     return true;
@@ -463,15 +487,24 @@
     if (snapshot.exists()) {
       const data = snapshot.val();
       if (data.timePerPerson !== undefined) timePerPerson = Number(data.timePerPerson);
+      
       if (data.shopStartHour !== undefined) shopStartHour = Number(data.shopStartHour);
       if (data.shopEndHour !== undefined) shopEndHour = Number(data.shopEndHour);
       
-      // ネット受付時間・上限数の設定項目
-      if (data.netStartHour !== undefined) netStartHour = Number(data.netStartHour);
-      if (data.netEndHour !== undefined) netEndHour = Number(data.netEndHour);
+      if (data.netStartHour !== undefined) {
+        netStartHour = Number(data.netStartHour);
+      } else {
+        netStartHour = shopStartHour;
+      }
+
+      if (data.netEndHour !== undefined) {
+        netEndHour = Number(data.netEndHour);
+      } else {
+        netEndHour = shopEndHour;
+      }
+
       if (data.maxQueueLimit !== undefined) maxQueueLimit = Number(data.maxQueueLimit);
 
-      // 受付機能ON/OFFの判定
       if (data.netBookingEnabled !== undefined) {
         netBookingEnabled = Boolean(data.netBookingEnabled);
       } else if (data.isOnlineEnabled !== undefined) {
