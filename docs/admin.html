@@ -35,6 +35,16 @@
     .customer-info {
       word-break: break-all;
       flex-grow: 1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .name-img {
+      max-height: 40px;
+      vertical-align: middle;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      background: #fff;
     }
     .count-text {
       white-space: nowrap; /* 「（N名）」の連動折り返しを防ぐ */
@@ -169,7 +179,13 @@
 
     if (data) {
       Object.keys(data).forEach(key => {
-        const item = { id: key, name: data[key].name, count: data[key].count || 1, status: data[key].status || 'waiting' };
+        const item = { 
+          id: key, 
+          name: data[key].name, 
+          nameImage: data[key].nameImage || null,
+          count: data[key].count || 1, 
+          status: data[key].status || 'waiting' 
+        };
         if (item.status === 'hold') {
           onHoldQueue.push(item);
         } else {
@@ -274,6 +290,13 @@
     });
   };
 
+  function renderNameHTML(item) {
+    if (item.nameImage) {
+      return `<img src="${item.nameImage}" class="name-img" alt="手書き名"> 様`;
+    }
+    return `${item.name} 様`;
+  }
+
   function render() {
     const listElement = document.getElementById('waitingList');
     listElement.innerHTML = '';
@@ -283,9 +306,10 @@
     } else {
       currentQueue.forEach((item, index) => {
         const li = document.createElement('li');
+        const nameDisp = renderNameHTML(item);
         li.innerHTML = `
           <div class="customer-info">
-            ${index + 1}番目: ${item.name} 様 <span class="count-text">（${item.count}名）</span>
+            ${index + 1}番目: ${nameDisp} <span class="count-text">（${item.count}名）</span>
           </div>
           <div class="btn-group">
             <button class="btn-hold" onclick="holdCustomer('${item.id}', '${item.name}')">保留</button>
@@ -304,10 +328,11 @@
     } else {
       onHoldQueue.forEach((item) => {
         const li = document.createElement('li');
+        const nameDisp = renderNameHTML(item);
         li.style.backgroundColor = '#ffffff';
         li.innerHTML = `
           <div class="customer-info">
-            ${item.name} 様 <span class="count-text">（${item.count}名）</span>
+            ${nameDisp} <span class="count-text">（${item.count}名）</span>
           </div>
           <div class="btn-group">
             <button class="btn-restore" onclick="restoreCustomer('${item.id}', '${item.name}')">戻す</button>
