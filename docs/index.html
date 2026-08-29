@@ -42,6 +42,8 @@
       border-radius: 8px;
       background-color: #f8fafc;
       touch-action: none;
+      max-width: 320px;
+      width: 100%;
     }
     canvas {
       display: block;
@@ -51,7 +53,7 @@
       cursor: crosshair;
     }
     .btn-clear {
-      align-self: flex-end;
+      align-self: flex-start;
       padding: 6px 12px;
       background-color: #64748b;
       color: white;
@@ -61,7 +63,7 @@
       cursor: pointer;
     }
 
-    /* 人数選択（ボタン＆数値入力） */
+    /* 人数選択 */
     .count-selection-area {
       padding-top: 10px;
       border-top: 1px dashed #bfdbfe;
@@ -93,8 +95,12 @@
     .btn-submit { width: 100%; padding: 15px; background-color: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 20px; font-weight: bold; margin-top: 10px; }
     .status-box { text-align: center; padding: 15px; background-color: #dbeafe; border-radius: 8px; }
     .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
-    .limit-notice { background-color: #fee2e2; border: 1px solid #ef4444; color: #991b1b; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; }
-    .closed-notice { background-color: #f3f4f6; border: 1px solid #9ca3af; color: #374151; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; }
+    
+    /* 各種通知スタイル */
+    .notice-box { padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-bottom: 15px; }
+    .limit-notice { background-color: #fee2e2; border: 1px solid #ef4444; color: #991b1b; }
+    .closed-notice { background-color: #f3f4f6; border: 1px solid #9ca3af; color: #374151; }
+    .stopped-notice { background-color: #fef3c7; border: 1px solid #f59e0b; color: #92400e; }
     
     ul { list-style: none; padding: 0; }
     li { 
@@ -134,23 +140,31 @@
   <div class="card">
     <h2>お名前と人数を入力してください</h2>
     
-    <div id="closedNotice" class="closed-notice" style="display: none;">
+    <!-- 手動停止時の表示 -->
+    <div id="stoppedNotice" class="notice-box stopped-notice" style="display: none;">
+      只今、オンライン受付を一時停止しております。
+    </div>
+
+    <!-- 営業時間外の表示 -->
+    <div id="closedNotice" class="notice-box closed-notice" style="display: none;">
       本日の営業・受付はすべて終了いたしました。
     </div>
 
-    <div id="limitNotice" class="limit-notice" style="display: none;">
+    <!-- 人数上限達時の表示 -->
+    <div id="limitNotice" class="notice-box limit-notice" style="display: none;">
       受付上限人数（<span id="maxLimitDisplay">50</span>名）に達したため、現在の受付は一時的に終了いたしました。
     </div>
 
+    <!-- フォーム本体 -->
     <div id="formContainer">
       <div class="input-group">
-        <!-- 1. 文字（キーボード）入力 -->
+        <!-- 1. 文字入力 -->
         <div>
           <div class="input-label">⌨️ お名前（文字入力）：</div>
           <input type="text" id="userName" placeholder="お名前を入力（例: 山田）">
         </div>
 
-        <!-- 2. 手書き入力（手書きの場合はこちら） -->
+        <!-- 2. 手書き入力 -->
         <div class="canvas-container">
           <div class="input-label">✍️ 手書きの場合はこちら（枠内にご記入）：</div>
           <div class="canvas-wrapper">
@@ -173,7 +187,7 @@
         </div>
       </div>
 
-      <button type="button" class="btn-submit" onclick="registerName()">受付する</button>
+      <button type="button" class="btn-submit" onclick="registerName()">順番待ちを申込む</button>
     </div>
   </div>
 
@@ -217,6 +231,7 @@
   let shopStartHour = 9;
   let shopEndHour = 18;
   let maxPeopleLimit = 50;
+  let isAccepting = true; // 店頭・管理側の受付可否フラグ
 
   // --- 手書きキャンバス制御 ---
   const canvas = document.getElementById('nameCanvas');
@@ -317,6 +332,7 @@
     customCountInput.value = '5';
   }
 
+  // 受付制限・可否の判定
   function checkLimit() {
     const now = new Date();
     const currentHour = now.getHours();
@@ -326,17 +342,24 @@
     const formEl = document.getElementById('formContainer');
     const closedEl = document.getElementById('closedNotice');
     const limitEl = document.getElementById('limitNotice');
+    const stoppedEl = document.getElementById('stoppedNotice');
     
     const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0) + 
                         onHoldQueue.reduce((sum, item) => sum + item.count, 0);
 
     const isShopOpen = (currentHour >= shopStartHour && currentHour < shopEndHour);
 
+    // 一旦すべて非表示
     formEl.style.display = 'none';
     closedEl.style.display = 'none';
     limitEl.style.display = 'none';
+    stoppedEl.style.display = 'none';
 
-    if (!isShopOpen) {
+    // 優先度判定: 店員の手動ストップ > 営業時間外 > 人数上限
+    if (isAccepting === false) {
+      stoppedEl.style.display = 'block';
+      return false;
+    } else if (!isShopOpen) {
       closedEl.style.display = 'block';
       return false;
     } else if (totalPeople >= maxPeopleLimit) {
@@ -348,6 +371,7 @@
     }
   }
 
+  // リアルタイムデータ取得（キュー）
   onValue(queueRef, (snapshot) => {
     const data = snapshot.val();
     currentQueue = [];
@@ -372,13 +396,15 @@
     render();
   });
 
+  // リアルタイムデータ取得（設定値：店員側の切り替えボタン含む）
   onValue(settingsRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
-      if (data.timePerPerson) timePerPerson = data.timePerPerson;
+      if (data.timePerPerson !== undefined) timePerPerson = data.timePerPerson;
       if (data.shopStartHour !== undefined) shopStartHour = data.shopStartHour;
       if (data.shopEndHour !== undefined) shopEndHour = data.shopEndHour;
       if (data.maxPeopleLimit !== undefined) maxPeopleLimit = data.maxPeopleLimit;
+      if (data.isAccepting !== undefined) isAccepting = data.isAccepting; // 受付可否
       render();
     }
   });
@@ -390,7 +416,6 @@
 
     const textName = document.getElementById('userName').value.trim();
 
-    // 手書き・文字どちらも入力がない場合のチェック
     if (!textName && !hasDrawn) {
       return Swal.fire({ icon: 'warning', title: '入力エラー', text: 'お名前を入力するか、枠内に手書きしてください' });
     }
@@ -401,7 +426,6 @@
       createdAt: serverTimestamp()
     };
 
-    // 手書きがある場合は手書き画像を優先、無ければテキスト名を使用
     if (hasDrawn) {
       payload.nameImage = canvas.toDataURL('image/png');
     } else {
