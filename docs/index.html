@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>【ネット受付用】順番待ち受付</title>
+  <title>【ネット予約】順番待ち受付</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
   <style>
@@ -48,7 +48,7 @@
       position: relative;
       border: 2px dashed #bae6fd;
       border-radius: 8px;
-      background-color: #f8fafc;
+      background-color: #ffffff;
       touch-action: none;
       width: 100%; 
       box-sizing: border-box;
@@ -135,7 +135,7 @@
 <body>
 
 <div class="container">
-  <h1 class="header-title">✂ ヘアカット専門店ankh上石神井店　 ネット受付</h1>
+  <h1 class="header-title">📱 オンライン順番待ち受付</h1>
 
   <!-- 各状態に対応するメッセージ表示領域 -->
   <div id="shopClosedNotice" class="notice-box shop-closed-notice" style="display: none;">本日の営業は終了いたしました。</div>
@@ -232,6 +232,11 @@
     if (rect.width > 0) {
       canvas.width = rect.width;
       canvas.height = 120;
+      
+      // 背景を白で塗りつぶす（画像の黒化を防止）
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
       ctx.lineWidth = 3;
       ctx.lineCap = 'round';
       ctx.strokeStyle = '#0f172a';
@@ -274,8 +279,10 @@
   canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, { passive: false });
   canvas.addEventListener('touchend', stopDrawing);
 
+  // クリア時も白で塗りつぶす
   window.clearCanvas = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     hasDrawn = false;
   };
 
@@ -337,9 +344,8 @@
     closedEl.style.display = 'none';
     limitEl.style.display = 'none';
 
-    // 1. 最優先：ネット予約自体がOFF（切っている状態）
+    // 1. 最優先：ネット予約自体がOFF
     if (netBookingEnabled === false) {
-      // メッセージ枠もフォームも表示せず、完全に消す（閲覧のみにする）
       return false;
     } 
     // 2. 営業時間外
@@ -357,7 +363,7 @@
       limitEl.style.display = 'block';
       return false;
     } 
-    // 5. すべてクリア（通常受付中）
+    // 5. 通常受付中
     else {
       formCard.style.display = 'block';
       return true;
