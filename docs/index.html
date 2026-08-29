@@ -11,11 +11,21 @@
     .container { max-width: 600px; margin: 0 auto; }
     h1, h2 { text-align: center; color: var(--primary); }
     .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    .input-group { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+    .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+    .row-inputs { display: flex; gap: 10px; align-items: center; }
     input[type="text"], input[type="number"] { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; }
     .input-name { flex: 2; min-width: 150px; }
     .input-count { flex: 1; min-width: 80px; }
+    
+    /* 手書きキャンバス用スタイル */
+    .canvas-container { text-align: center; margin-bottom: 10px; }
+    canvas { border: 2px dashed #cbd5e1; border-radius: 8px; background: #fff; touch-action: none; cursor: crosshair; }
+    .canvas-tools { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
+    .btn-clear { background-color: #64748b; font-size: 12px; padding: 6px 12px; }
+
     button { padding: 10px 16px; background-color: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold; }
+    .btn-submit { width: 100%; padding: 12px; font-size: 18px; margin-top: 10px; }
+
     .status-box { text-align: center; padding: 15px; background-color: #eff6ff; border-radius: 8px; }
     .status-number { font-size: 36px; font-weight: bold; color: var(--primary); }
     .time-notice { background-color: #fef3c7; border: 1px solid #f59e0b; color: #92400e; padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; }
@@ -38,11 +48,11 @@
     .hold-card { border: 1px solid #fed7aa; background-color: #fff7ed; }
     .hold-badge { background-color: #f97316; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 5px; display: inline-block; }
     
-    .customer-info { flex-grow: 1; }
+    .customer-info { flex-grow: 1; display: flex; align-items: center; gap: 8px; }
+    .name-img { max-height: 40px; vertical-align: middle; }
     .nobreak { white-space: nowrap; }
     .time-info { white-space: nowrap; flex-shrink: 0; }
 
-    /* スマホ（画面幅が狭い端末）向けの表示切り替え */
     @media (max-width: 480px) {
       li {
         flex-direction: column;
@@ -68,9 +78,22 @@
     </p>
 
     <div id="formContainer" class="input-group" style="display: none;">
-      <input type="text" id="userName" class="input-name" placeholder="お名前">
-      <input type="number" id="userCount" class="input-count" value="1" min="1" placeholder="人数">
-      <button onclick="registerName()">登録</button>
+      <div class="row-inputs">
+        <input type="text" id="userName" class="input-name" placeholder="お名前（テキスト入力）">
+        <input type="number" id="userCount" class="input-count" value="1" min="1" placeholder="人数">
+      </div>
+
+      <!-- 手書きサインエリア -->
+      <div class="canvas-container">
+        <div style="font-size: 13px; color: #64748b; margin-bottom: 4px; text-align: left;">✍️ 手書きでお名前を書く場合はこちら：</div>
+        <canvas id="sigCanvas" width="320" height="120"></canvas>
+        <div class="canvas-tools">
+          <span style="font-size: 11px; color: #94a3b8;">※テキスト入力または手書きのどちらかでOKです</span>
+          <button type="button" class="btn-clear" onclick="clearCanvas()">やり直す</button>
+        </div>
+      </div>
+
+      <button class="btn-submit" onclick="registerName()">登録する</button>
     </div>
 
     <div id="closedNotice" class="closed-notice" style="display: none;">
@@ -91,7 +114,7 @@
       📢 <b>ご来店に関するご注意</b><br>
       ・前のお客様のキャンセル等で<b>順番が急に繰り上がる場合がございます</b>。<br>
       ・<b>【3番目以内】</b>になられたお客様は、お早めに店内（または近く）へお越しください。<br>
-      ・キャンセルの際は、店頭にてお申し出ください。
+      ・キャンセルの際は、お電話または店頭にてお申し出ください。
     </div>
   </div>
 
@@ -144,6 +167,60 @@
   let endHour = 17;
   let maxPeopleLimit = 50;
 
+  // 手書きキャンバスの設定
+  const canvas = document.getElementById('sigCanvas');
+  const ctx = canvas.getContext('2d');
+  let isDrawing = false;
+  let hasDrawn = false;
+
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#0f172a';
+
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  }
+
+  function startDraw(e) {
+    isDrawing = true;
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  }
+
+  function draw(e) {
+    if (!isDrawing) return;
+    e.preventDefault();
+    hasDrawn = true;
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  }
+
+  function stopDraw() {
+    isDrawing = false;
+  }
+
+  canvas.addEventListener('mousedown', startDraw);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('mouseup', stopDraw);
+  canvas.addEventListener('mouseleave', stopDraw);
+
+  canvas.addEventListener('touchstart', startDraw);
+  canvas.addEventListener('touchmove', draw);
+  canvas.addEventListener('touchend', stopDraw);
+
+  window.clearCanvas = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    hasDrawn = false;
+  };
+
   function checkOnlineTimeAndLimit() {
     const now = new Date();
     const currentHour = now.getHours();
@@ -193,7 +270,13 @@
 
     if (data) {
       Object.keys(data).forEach(key => {
-        const item = { id: key, name: data[key].name, count: data[key].count || 1, status: data[key].status || 'waiting' };
+        const item = { 
+          id: key, 
+          name: data[key].name, 
+          nameImage: data[key].nameImage || null,
+          count: data[key].count || 1, 
+          status: data[key].status || 'waiting' 
+        };
         if (item.status === 'hold') {
           onHoldQueue.push(item);
         } else {
@@ -226,9 +309,14 @@
     const countInput = document.getElementById('userCount');
     const name = nameInput.value.trim();
     const count = parseInt(countInput.value) || 1;
+    let nameImgData = null;
 
-    if (!name) {
-      return Swal.fire({ icon: 'warning', title: '入力エラー', text: 'お名前を入力してください' });
+    if (hasDrawn) {
+      nameImgData = canvas.toDataURL('image/png');
+    }
+
+    if (!name && !hasDrawn) {
+      return Swal.fire({ icon: 'warning', title: '入力エラー', text: 'お名前をテキスト入力するか、手書きで描いてください' });
     }
 
     const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0) + 
@@ -237,11 +325,26 @@
       return Swal.fire({ icon: 'warning', title: '上限オーバー', text: `上限人数（${maxPeopleLimit}名）を超えるため登録できません。` });
     }
 
-    push(queueRef, { name: name, count: count, status: 'waiting', createdAt: serverTimestamp() });
+    push(queueRef, { 
+      name: name || '手書き入力', 
+      nameImage: nameImgData,
+      count: count, 
+      status: 'waiting', 
+      createdAt: serverTimestamp() 
+    });
+
     nameInput.value = '';
     countInput.value = '1';
+    clearCanvas();
     Swal.fire({ icon: 'success', title: '登録完了', text: '順番待ちの登録が完了しました！' });
   };
+
+  function renderNameHTML(item) {
+    if (item.nameImage) {
+      return `<img src="${item.nameImage}" class="name-img" alt="手書き名"> 様`;
+    }
+    return `${item.name} 様`;
+  }
 
   function render() {
     checkOnlineTimeAndLimit();
@@ -261,11 +364,13 @@
       let accumulatedPeople = 0;
       currentQueue.forEach((item, index) => {
         const li = document.createElement('li');
+        const nameDisp = renderNameHTML(item);
+        
         if (index === 0) {
           li.classList.add('next-item');
           li.innerHTML = `
             <div class="customer-info">
-              <span class="badge-next">NEXT</span> 1番目: ${item.name} 様 <span class="nobreak">(${item.count}名)</span>
+              <span class="badge-next">NEXT</span> 1番目: ${nameDisp} <span class="nobreak">(${item.count}名)</span>
             </div>
             <div class="time-info" style="color: #d97706; font-weight: bold;">[まもなく開始です。お近くでお待ちください]</div>
           `;
@@ -273,7 +378,7 @@
           const waitMinutes = accumulatedPeople * timePerPerson;
           li.innerHTML = `
             <div class="customer-info">
-              ${index + 1}番目: ${item.name} 様 <span class="nobreak">(${item.count}名)</span>
+              ${index + 1}番目: ${nameDisp} <span class="nobreak">(${item.count}名)</span>
             </div>
             <div class="time-info" style="color: #64748b;">（あと約 ${waitMinutes} 分）</div>
           `;
@@ -291,9 +396,10 @@
       holdCard.style.display = 'block';
       onHoldQueue.forEach((item) => {
         const li = document.createElement('li');
+        const nameDisp = renderNameHTML(item);
         li.innerHTML = `
           <div class="customer-info">
-            <span class="hold-badge">保留中</span> ${item.name} 様 <span class="nobreak">(${item.count}名)</span>
+            <span class="hold-badge">保留中</span> ${nameDisp} <span class="nobreak">(${item.count}名)</span>
           </div>
         `;
         holdListElement.appendChild(li);
