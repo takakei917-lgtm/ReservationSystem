@@ -6,60 +6,92 @@
   <title>【管理用】順番待ち管理</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
+    /* 全体でサイズ計算を崩さないための設定 */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
     :root { --primary: #1e3a8a; --bg: #f8fafc; --card-bg: #ffffff; --text: #0f172a; }
-    body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-    .container { max-width: 600px; margin: 0 auto; }
-    h1, h2 { text-align: center; color: #dc2626; }
-    .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
-    .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-    input[type="number"] { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; width: 70px; }
-    button { padding: 8px 12px; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; }
-    .btn-main { width: 100%; padding: 15px; font-size: 18px; margin-top: 10px; background-color: #dc2626; }
-    .btn-cancel { background-color: #64748b; }
-    .btn-hold { background-color: #f59e0b; margin-right: 5px; }
-    .btn-restore { background-color: #2563eb; margin-right: 5px; }
-    ul { list-style: none; padding: 0; }
+    body { font-family: sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 15px; }
+    .container { max-width: 600px; margin: 0 auto; width: 100%; }
+    h1, h2 { text-align: center; color: #dc2626; margin-top: 0; }
+    .card { background: var(--card-bg); padding: 15px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 20px; }
     
-    /* リスト項目のレスポンシブ設定 */
+    .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; }
+    input[type="number"] { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; width: 70px; }
+    
+    /* 基本ボタン設定 */
+    button { 
+      padding: 8px 10px; 
+      color: white; 
+      border: none; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      font-size: 14px; 
+      font-weight: bold; 
+      touch-action: manipulation;
+    }
+    .btn-main { width: 100%; padding: 15px; font-size: 18px; margin-top: 10px; background-color: #dc2626; }
+    
+    /* 操作ボタンの固定幅設定 */
+    .btn-cancel { background-color: #64748b; width: 68px; flex-shrink: 0; }
+    .btn-hold { background-color: #f59e0b; width: 68px; flex-shrink: 0; }
+    .btn-restore { background-color: #2563eb; width: 68px; flex-shrink: 0; }
+    
+    ul { list-style: none; padding: 0; margin: 0; }
+    
+    /* リスト構造のレスポンシブ化 */
     li { 
-      padding: 12px; 
+      padding: 12px 10px; 
       border-bottom: 1px solid #e2e8f0; 
       display: flex; 
       justify-content: space-between; 
       align-items: center; 
       gap: 10px; 
+      width: 100%;
     }
     li:first-child { font-weight: bold; background-color: #fee2e2; border-radius: 6px; }
     
-    /* 左側のテキスト部分：長い名前は適切に折り返し */
+    /* 左側：名前・人数領域（画面幅に合わせて伸縮） */
     .customer-info {
-      word-break: break-all;
-      flex-grow: 1;
+      flex: 1 1 0%;
+      min-width: 0; /* フレックス要素のはみ出し防止 */
       display: flex;
       align-items: center;
+      flex-wrap: wrap; /* 小さな画面で必要に応じて折り返し */
       gap: 6px;
+      word-break: break-word; /* 長いテキストの自動改行 */
+      line-height: 1.4;
     }
+
+    /* 手書き名札画像 */
     .name-img {
       max-height: 40px;
+      max-width: 100%; /* 親要素を超えないように縮小 */
+      object-fit: contain;
       vertical-align: middle;
       border: 1px solid #e2e8f0;
       border-radius: 4px;
       background: #fff;
-      cursor: zoom-in; /* クリックで拡大できることを示すカーソル */
+      cursor: zoom-in;
       transition: transform 0.1s ease;
     }
     .name-img:hover {
       transform: scale(1.05);
     }
+    
+    /* 人数カウント部分 */
     .count-text {
-      white-space: nowrap; /* 「（N名）」の連動折り返しを防ぐ */
+      white-space: nowrap; /* 「（N名）」が途中で分断されるのを防止 */
+      font-weight: normal;
+      color: #475569;
     }
 
-    /* 右側のボタン部分：絶対に1行を維持して潰さない */
+    /* 右側：ボタン領域（幅固定・絶対につぶさない） */
     .btn-group {
       display: flex;
-      flex-shrink: 0;
-      white-space: nowrap;
+      gap: 6px;
+      flex-shrink: 0; /* スマホ画面でも縮小させない */
     }
 
     .hold-card { border: 2px dashed #f59e0b; background-color: #fffbeeb0; }
@@ -79,7 +111,7 @@
       color: #dc2626;
     }
 
-    /* 手書き画像拡大用モーダル（ポップアップ） */
+    /* モーダル（画像拡大） */
     .modal-overlay {
       display: none;
       position: fixed;
@@ -92,7 +124,6 @@
       justify-content: center;
       align-items: center;
       padding: 20px;
-      box-sizing: border-border-box;
     }
     .modal-content {
       background: #ffffff;
@@ -110,6 +141,7 @@
       border: 1px solid #cbd5e1;
       border-radius: 8px;
       background: #ffffff;
+      object-fit: contain;
     }
     .modal-close {
       position: absolute;
@@ -122,9 +154,6 @@
       background: none;
       border: none;
       padding: 0;
-    }
-    .modal-close:hover {
-      color: #0f172a;
     }
   </style>
 </head>
@@ -183,7 +212,7 @@
   </div>
 </div>
 
-<!-- 拡大表示用モーダル -->
+<!-- 画像拡大表示用モーダル -->
 <div id="imageModal" class="modal-overlay" onclick="closeModal()">
   <div class="modal-content" onclick="event.stopPropagation()">
     <button class="modal-close" onclick="closeModal()">✕</button>
@@ -229,7 +258,6 @@
   let onHoldQueue = [];
   let todayCompletedCount = 0;
 
-  // モーダル表示制御機能
   window.openModal = (imgSrc) => {
     const modal = document.getElementById('imageModal');
     const modalImg = document.getElementById('modalImage');
@@ -385,7 +413,7 @@
         const nameDisp = renderNameHTML(item);
         li.innerHTML = `
           <div class="customer-info">
-            ${index + 1}番目: ${nameDisp} <span class="count-text">（${item.count}名）</span>
+            <span>${index + 1}番目:</span> ${nameDisp} <span class="count-text">（${item.count}名）</span>
           </div>
           <div class="btn-group">
             <button class="btn-hold" onclick="holdCustomer('${item.id}', '${item.name}')">保留</button>
