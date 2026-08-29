@@ -391,6 +391,9 @@
     const currentGroups = currentQueue.length;
     const currentPeople = currentQueue.reduce((sum, item) => sum + item.count, 0);
 
+    // 判定ログを出力（F12のコンソールで確認可能）
+    console.log(`[判定] 現在:${currentGroups}組(${currentPeople}人) / 上限設定:組=${maxGroups}, 人=${maxPeople}`);
+
     const isGroupOver = (maxGroups > 0 && currentGroups >= maxGroups);
     const isPeopleOver = (maxPeople > 0 && currentPeople >= maxPeople);
 
@@ -434,11 +437,19 @@
   onValue(settingsRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
-      if (data.timePerPerson !== undefined) timePerPerson = Number(data.timePerPerson);
-      if (data.shopStartHour !== undefined) shopStartHour = Number(data.shopStartHour);
-      if (data.shopEndHour !== undefined) shopEndHour = Number(data.shopEndHour);
-      if (data.maxGroups !== undefined) maxGroups = Number(data.maxGroups);
-      if (data.maxPeople !== undefined) maxPeople = Number(data.maxPeople);
+      console.log("Firebaseから取得した設定:", data);
+
+      if (data.timePerPerson !== undefined) timePerPerson = Number(data.timePerPerson) || 20;
+      if (data.shopStartHour !== undefined) shopStartHour = Number(data.shopStartHour) || 9;
+      if (data.shopEndHour !== undefined) shopEndHour = Number(data.shopEndHour) || 18;
+      
+      // キー名の表記揺れ（キャメルケース／スネークケースなど）に対応
+      const rawMaxGroups = data.maxGroups ?? data.max_groups ?? data.maxGroup ?? 0;
+      const rawMaxPeople = data.maxPeople ?? data.max_people ?? data.maxPerson ?? 0;
+
+      maxGroups = Number(rawMaxGroups) || 0;
+      maxPeople = Number(rawMaxPeople) || 0;
+
       render();
     }
   });
