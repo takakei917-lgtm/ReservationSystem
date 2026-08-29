@@ -28,7 +28,7 @@
     
     .form-group { margin-bottom: 15px; }
     label { display: block; font-weight: bold; margin-bottom: 5px; }
-    input[type="text"], select {
+    input[type="text"], input[type="number"], select {
       width: 100%;
       padding: 10px;
       border: 1px solid #cbd5e1;
@@ -142,7 +142,7 @@
     </div>
   </div>
 
-  <!-- ネット受付OFF時に表示されるメッセージ（デフォルト非表示） -->
+  <!-- ネット受付OFF時に表示されるメッセージ -->
   <div id="offNoticeCard" class="off-notice" style="display: none;">
     ⚠️ 現在、ネットからの新規受付は停止しております。<br>
     （順番待ち状況の確認のみ可能です）
@@ -158,7 +158,7 @@
         <input type="text" id="userName" placeholder="例：山田">
       </div>
 
-      <!-- ② 手書き入力（同時に表示） -->
+      <!-- ② 手書き入力（同時表示） -->
       <div class="handwriting-section">
         <div class="handwriting-label">
           ✍️ 手書きでお名前を書く場合はこちら
@@ -171,16 +171,22 @@
         </div>
       </div>
 
-      <!-- 人数選択 -->
+      <!-- 人数選択（5名以上で詳細入力表示） -->
       <div class="form-group" style="margin-top: 15px;">
-        <label for="userCount">人数</label>
-        <select id="userCount">
+        <label for="userCountSelect">人数</label>
+        <select id="userCountSelect" onchange="handleCountChange()">
           <option value="1">1名</option>
           <option value="2">2名</option>
           <option value="3">3名</option>
           <option value="4">4名</option>
-          <option value="5">5名以上</option>
+          <option value="more">5名以上（指定して書く）</option>
         </select>
+      </div>
+
+      <!-- 5名以上の時の人数記入欄（デフォルト非表示） -->
+      <div class="form-group" id="customCountGroup" style="display: none;">
+        <label for="customCountInput" style="color: #dc2626;">詳しい人数を入力してください</label>
+        <input type="number" id="customCountInput" min="5" placeholder="例：6">
       </div>
 
       <button type="submit" class="btn-submit" id="submitBtn">順番待ちに並ぶ</button>
@@ -241,10 +247,7 @@
     const rect = canvas.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
-    };
+    return { x: clientX - rect.left, y: clientY - rect.top };
   }
 
   canvas.addEventListener('mousedown', (e) => { isDrawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); });
@@ -260,7 +263,18 @@
     isCanvasEmpty = true;
   };
 
-  // 設定監視（1人あたりの待ち時間・受付上限・ネット受付フラグ）
+  // 5名以上選択時の制御
+  window.handleCountChange = () => {
+    const selectVal = document.getElementById('userCountSelect').value;
+    const customGroup = document.getElementById('customCountGroup');
+    if (selectVal === 'more') {
+      customGroup.style.display = 'block';
+    } else {
+      customGroup.style.display = 'none';
+    }
+  };
+
+  // 設定監視
   onValue(settingsRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
@@ -274,7 +288,7 @@
       if (netBookingEnabled) {
         formCard.style.display = 'block';
         offNotice.style.display = 'none';
-        setTimeout(resizeCanvas, 100); // フォーム再表示時にキャンバスサイズ調整
+        setTimeout(resizeCanvas, 100);
       } else {
         formCard.style.display = 'none';
         offNotice.style.display = 'block';
@@ -320,7 +334,7 @@
     }
   });
 
-  // 受付フォーム送信処理
+  // 受付フォーム送信
   document.getElementById('queueForm').addEventListener('submit', (e) => {
     e.preventDefault();
 
@@ -329,11 +343,22 @@
     }
 
     const textName = document.getElementById('userName').value.trim();
-    const count = parseInt(document.getElementById('userCount').value) || 1;
+    const selectVal = document.getElementById('userCountSelect').value;
+    let finalCount = 1;
+
+    if (selectVal === 'more') {
+      const customVal = parseInt(document.getElementById('customCountInput').value);
+      if (!customVal || customVal < 5) {
+        return Swal.fire({ icon: 'warning', title: '入力エラー', text: '5名以上の人数（数字）を正確に入力してください。' });
+      }
+      finalCount = customVal;
+    } else {
+      finalCount = parseInt(selectVal);
+    }
+
     let nameVal = "";
     let nameImgData = null;
 
-    // 手書きが入力されていれば手書き優先、なければテキスト入力
     if (!isCanvasEmpty) {
       nameVal = "手書き様";
       nameImgData = canvas.toDataURL();
@@ -353,7 +378,7 @@
     push(queueRef, {
       name: nameVal,
       nameImage: nameImgData,
-      count: count,
+      count: finalCount,
       status: 'waiting',
       createdAt: serverTimestamp()
     }).then(() => {
@@ -365,6 +390,9 @@
         showConfirmButton: false
       });
       document.getElementById('userName').value = '';
+      document.getElementById('customCountInput').value = '';
+      document.getElementById('userCountSelect').value = '1';
+      handleCountChange();
       clearCanvas();
       submitBtn.disabled = false;
     }).catch((err) => {
