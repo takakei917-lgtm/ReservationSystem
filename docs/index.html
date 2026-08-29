@@ -36,7 +36,20 @@
       font-size: 16px;
     }
 
-    /* 手書き入力キャンバス */
+    /* 手書き入力エリアの設定 */
+    .handwriting-section {
+      border-top: 1px dashed #cbd5e1;
+      margin-top: 15px;
+      padding-top: 15px;
+    }
+    .handwriting-label {
+      font-weight: bold;
+      color: #1e3a8a;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
     .canvas-container {
       border: 1px solid #cbd5e1;
       border-radius: 6px;
@@ -76,6 +89,7 @@
       font-size: 18px;
       font-weight: bold;
       cursor: pointer;
+      margin-top: 10px;
     }
     .btn-submit:disabled {
       background-color: #94a3b8;
@@ -138,32 +152,27 @@
   <div id="bookingFormCard" class="card">
     <h2>新規受付</h2>
     <form id="queueForm">
+      <!-- ① テキスト入力 -->
       <div class="form-group">
-        <label>入力方法の選択</label>
-        <select id="inputType" onchange="toggleInputType()">
-          <option value="text">テキストで入力</option>
-          <option value="canvas">手書きで入力</option>
-        </select>
-      </div>
-
-      <!-- テキスト入力 -->
-      <div class="form-group" id="textInputGroup">
-        <label for="userName">お名前</label>
+        <label for="userName">お名前（キーボード入力）</label>
         <input type="text" id="userName" placeholder="例：山田">
       </div>
 
-      <!-- 手書き入力 -->
-      <div class="form-group" id="canvasInputGroup" style="display: none;">
-        <label>お名前（手書き）</label>
+      <!-- ② 手書き入力（同時に表示） -->
+      <div class="handwriting-section">
+        <div class="handwriting-label">
+          ✍️ 手書きでお名前を書く場合はこちら
+        </div>
         <div class="canvas-container">
           <canvas id="nameCanvas"></canvas>
         </div>
         <div class="canvas-btn-row">
-          <button type="button" class="btn-clear" onclick="clearCanvas()">やり直す</button>
+          <button type="button" class="btn-clear" onclick="clearCanvas()">書き直す</button>
         </div>
       </div>
 
-      <div class="form-group">
+      <!-- 人数選択 -->
+      <div class="form-group" style="margin-top: 15px;">
         <label for="userCount">人数</label>
         <select id="userCount">
           <option value="1">1名</option>
@@ -251,18 +260,6 @@
     isCanvasEmpty = true;
   };
 
-  window.toggleInputType = () => {
-    const type = document.getElementById('inputType').value;
-    if (type === 'text') {
-      document.getElementById('textInputGroup').style.display = 'block';
-      document.getElementById('canvasInputGroup').style.display = 'none';
-    } else {
-      document.getElementById('textInputGroup').style.display = 'none';
-      document.getElementById('canvasInputGroup').style.display = 'block';
-      resizeCanvas();
-    }
-  };
-
   // 設定監視（1人あたりの待ち時間・受付上限・ネット受付フラグ）
   onValue(settingsRef, (snapshot) => {
     if (snapshot.exists()) {
@@ -274,10 +271,10 @@
       const formCard = document.getElementById('bookingFormCard');
       const offNotice = document.getElementById('offNoticeCard');
 
-      // ネット受付フラグに応じて画面要素を制御
       if (netBookingEnabled) {
         formCard.style.display = 'block';
         offNotice.style.display = 'none';
+        setTimeout(resizeCanvas, 100); // フォーム再表示時にキャンバスサイズ調整
       } else {
         formCard.style.display = 'none';
         offNotice.style.display = 'block';
@@ -331,22 +328,23 @@
       return Swal.fire({ icon: 'error', title: '受付停止中', text: '現在ネットからの受付は停止しております。' });
     }
 
-    const inputType = document.getElementById('inputType').value;
+    const textName = document.getElementById('userName').value.trim();
     const count = parseInt(document.getElementById('userCount').value) || 1;
     let nameVal = "";
     let nameImgData = null;
 
-    if (inputType === 'text') {
-      nameVal = document.getElementById('userName').value.trim();
-      if (!nameVal) {
-        return Swal.fire({ icon: 'warning', title: '入力エラー', text: 'お名前を入力してください。' });
-      }
-    } else {
-      if (isCanvasEmpty) {
-        return Swal.fire({ icon: 'warning', title: '入力エラー', text: '手書きで名前を描いてください。' });
-      }
+    // 手書きが入力されていれば手書き優先、なければテキスト入力
+    if (!isCanvasEmpty) {
       nameVal = "手書き様";
       nameImgData = canvas.toDataURL();
+    } else if (textName) {
+      nameVal = textName;
+    } else {
+      return Swal.fire({ 
+        icon: 'warning', 
+        title: '入力エラー', 
+        text: 'お名前をテキストで入力するか、手書き枠に書いてください。' 
+      });
     }
 
     const submitBtn = document.getElementById('submitBtn');
