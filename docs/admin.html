@@ -20,6 +20,62 @@
     .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px; }
     input[type="number"] { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 16px; width: 70px; }
     
+    /* トグルスイッチのスタイル */
+    .switch-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #ffffff;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      margin-bottom: 15px;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 26px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #cbd5e1;
+      transition: .3s;
+      border-radius: 26px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #16a34a;
+    }
+    input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+    .status-badge {
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .status-on { background-color: #dcfce7; color: #15803d; }
+    .status-off { background-color: #fee2e2; color: #b91c1c; }
+
     /* 基本ボタン設定 */
     button { 
       padding: 8px 10px; 
@@ -55,19 +111,19 @@
     /* 左側：名前・人数領域（画面幅に合わせて伸縮） */
     .customer-info {
       flex: 1 1 0%;
-      min-width: 0; /* フレックス要素のはみ出し防止 */
+      min-width: 0;
       display: flex;
       align-items: center;
-      flex-wrap: wrap; /* 小さな画面で必要に応じて折り返し */
+      flex-wrap: wrap;
       gap: 6px;
-      word-break: break-word; /* 長いテキストの自動改行 */
+      word-break: break-word;
       line-height: 1.4;
     }
 
     /* 手書き名札画像 */
     .name-img {
       max-height: 40px;
-      max-width: 100%; /* 親要素を超えないように縮小 */
+      max-width: 100%;
       object-fit: contain;
       vertical-align: middle;
       border: 1px solid #e2e8f0;
@@ -82,16 +138,16 @@
     
     /* 人数カウント部分 */
     .count-text {
-      white-space: nowrap; /* 「（N名）」が途中で分断されるのを防止 */
+      white-space: nowrap;
       font-weight: normal;
       color: #475569;
     }
 
-    /* 右側：ボタン領域（幅固定・絶対につぶさない） */
+    /* 右側：ボタン領域（幅固定） */
     .btn-group {
       display: flex;
       gap: 6px;
-      flex-shrink: 0; /* スマホ画面でも縮小させない */
+      flex-shrink: 0;
     }
 
     .hold-card { border: 2px dashed #f59e0b; background-color: #fffbeeb0; }
@@ -182,6 +238,22 @@
 
   <div class="card setting-card">
     <h2 style="color: #475569;">⚙️ システム設定</h2>
+    
+    <!-- ネット受付機能 ON/OFF スイッチ -->
+    <div class="switch-container">
+      <div>
+        <div style="font-weight: bold; font-size: 15px;">ネット受付機能</div>
+        <div style="font-size: 12px; color: #64748b;">OFFにするとお客様画面は「順番閲覧のみ」になります</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span id="statusLabel" class="status-badge status-on">受付中</span>
+        <label class="switch">
+          <input type="checkbox" id="netBookingToggle" onchange="toggleNetBooking(this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
     <div class="setting-row">
       <label>1人あたりの目安時間:</label>
       <div><input type="number" id="timePerPerson" value="20" min="1"> 分</div>
@@ -309,8 +381,29 @@
       if (data.shopEndHour !== undefined) document.getElementById('shopEndHour').value = data.shopEndHour;
       if (data.startHour !== undefined) document.getElementById('startHour').value = data.startHour;
       if (data.endHour !== undefined) document.getElementById('endHour').value = data.endHour;
+
+      // ネット受付フラグ（未設定時はデフォルトtrue）
+      const isNetEnabled = data.netBookingEnabled !== undefined ? data.netBookingEnabled : true;
+      document.getElementById('netBookingToggle').checked = isNetEnabled;
+      updateStatusLabel(isNetEnabled);
     }
   });
+
+  window.toggleNetBooking = (isEnabled) => {
+    update(settingsRef, { netBookingEnabled: isEnabled });
+    updateStatusLabel(isEnabled);
+  };
+
+  function updateStatusLabel(isEnabled) {
+    const label = document.getElementById('statusLabel');
+    if (isEnabled) {
+      label.textContent = "受付中";
+      label.className = "status-badge status-on";
+    } else {
+      label.textContent = "閲覧のみ";
+      label.className = "status-badge status-off";
+    }
+  }
 
   window.saveSettings = () => {
     const timeVal = parseInt(document.getElementById('timePerPerson').value) || 20;
@@ -319,6 +412,7 @@
     const shopEndVal = parseInt(document.getElementById('shopEndHour').value) || 18;
     const startVal = parseInt(document.getElementById('startHour').value) || 10;
     const endVal = parseInt(document.getElementById('endHour').value) || 17;
+    const isNetEnabled = document.getElementById('netBookingToggle').checked;
 
     set(settingsRef, {
       timePerPerson: timeVal,
@@ -326,7 +420,8 @@
       shopStartHour: shopStartVal,
       shopEndHour: shopEndVal,
       startHour: startVal,
-      endHour: endVal
+      endHour: endVal,
+      netBookingEnabled: isNetEnabled
     });
     Swal.fire({ icon: 'success', title: '設定完了', text: '設定を保存しました', timer: 1500, showConfirmButton: false });
   };
