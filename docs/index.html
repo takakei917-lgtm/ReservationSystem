@@ -127,9 +127,6 @@
     .status-box { text-align: center; padding: 12px; background-color: #dbeafe; border-radius: 8px; }
     .status-number { font-size: 32px; font-weight: bold; color: var(--primary); }
     
-    .notice-box { padding: 16px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 16px; margin-bottom: 16px; }
-    .closed-notice { background-color: #f3f4f6; border: 1px solid #9ca3af; color: #374151; }
-    
     ul { list-style: none; padding: 0; margin: 0; }
     li { 
       padding: 12px; 
@@ -170,8 +167,7 @@
 <div class="container">
   <h1 class="header-title">📱 オンライン順番受付</h1>
 
-  <div id="shopClosedNotice" class="notice-box closed-notice" style="display: none;">本日の受付は終了いたしました。</div>
-
+  <!-- 受付カード（OFFの時は非表示） -->
   <div class="card" id="formCard">
     <h3 style="margin-top: 0;">お名前と人数を入力してください</h3>
     
@@ -251,6 +247,7 @@
   let timePerPerson = 20;
   let shopStartHour = 9;
   let shopEndHour = 18;
+  let isOnlineEnabled = true;
 
   const canvas = document.getElementById('nameCanvas');
   const ctx = canvas.getContext('2d');
@@ -367,22 +364,20 @@
     customCountInput.value = '5';
   }
 
+  // 判定処理（メッセージを表示せず、フォームカードの表示／非表示のみ切替）
   function checkLimit() {
     const now = new Date();
     const currentHour = now.getHours();
-
     const formCard = document.getElementById('formCard');
-    const shopClosedEl = document.getElementById('shopClosedNotice');
 
     const isShopOpen = (currentHour >= shopStartHour && currentHour < shopEndHour);
 
-    if (!isShopOpen) {
+    // 営業時間外、または店員によりネット受付がOFFの場合
+    if (!isShopOpen || !isOnlineEnabled) {
       formCard.style.display = 'none';
-      shopClosedEl.style.display = 'block';
       return false;
     } else {
       formCard.style.display = 'block';
-      shopClosedEl.style.display = 'none';
       return true;
     }
   }
@@ -417,14 +412,13 @@
       if (data.timePerPerson !== undefined) timePerPerson = Number(data.timePerPerson);
       if (data.shopStartHour !== undefined) shopStartHour = Number(data.shopStartHour);
       if (data.shopEndHour !== undefined) shopEndHour = Number(data.shopEndHour);
+      if (data.isOnlineEnabled !== undefined) isOnlineEnabled = Boolean(data.isOnlineEnabled);
       render();
     }
   });
 
   window.registerName = () => {
-    if (!checkLimit()) {
-      return Swal.fire({ icon: 'error', title: '受付時間外', text: '本日の営業は終了しております。' });
-    }
+    if (!checkLimit()) return;
 
     const textName = document.getElementById('userName').value.trim();
 
