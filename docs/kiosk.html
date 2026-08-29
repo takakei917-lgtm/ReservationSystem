@@ -1,3 +1,8 @@
+受付人数の上限に達した際に画面が自動で切り替わらない原因は、店員用画面で保存している設定キー名（maxPeopleLimit）と、店頭用画面で判定に使っているキー名（maxPeople）の不一致およびリアルタイムの人数再計算タイミングにあります。
+
+店頭用コードの settingsRef 読み込み部分を修正し、受付上限を正しく判定・リアルタイム更新できるようにした全文コードを以下に用意しました。そのまま差し替えてご使用ください。
+
+HTML
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -253,8 +258,7 @@
   let timePerPerson = 20;
   let shopStartHour = 9;
   let shopEndHour = 18;
-  let maxGroups = 0;  // 0 は上限なし
-  let maxPeople = 0;  // 0 は上限なし
+  let maxPeopleLimit = 0; // 店員用画面で設定した受付上限（人数）
 
   const canvas = document.getElementById('nameCanvas');
   const ctx = canvas.getContext('2d');
@@ -388,13 +392,13 @@
       return false;
     }
 
-    const currentGroups = currentQueue.length;
+    // 待ち列の合計人数を計算
     const currentPeople = currentQueue.reduce((sum, item) => sum + item.count, 0);
 
-    const isGroupOver = (maxGroups > 0 && currentGroups >= maxGroups);
-    const isPeopleOver = (maxPeople > 0 && currentPeople >= maxPeople);
+    // 店員画面で設定した上限人数（maxPeopleLimit）と比較
+    const isPeopleOver = (maxPeopleLimit > 0 && currentPeople >= maxPeopleLimit);
 
-    if (isGroupOver || isPeopleOver) {
+    if (isPeopleOver) {
       formCard.style.display = 'none';
       shopClosedEl.style.display = 'none';
       shopLimitEl.style.display = 'block';
@@ -431,14 +435,17 @@
     render();
   });
 
+  // 設定変更のリアルタイム検知
   onValue(settingsRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
       if (data.timePerPerson !== undefined) timePerPerson = Number(data.timePerPerson);
       if (data.shopStartHour !== undefined) shopStartHour = Number(data.shopStartHour);
       if (data.shopEndHour !== undefined) shopEndHour = Number(data.shopEndHour);
-      if (data.maxGroups !== undefined) maxGroups = Number(data.maxGroups);
-      if (data.maxPeople !== undefined) maxPeople = Number(data.maxPeople);
+      
+      // 店員用画面の「maxPeopleLimit」を取得して反映
+      if (data.maxPeopleLimit !== undefined) maxPeopleLimit = Number(data.maxPeopleLimit);
+      
       render();
     }
   });
