@@ -177,9 +177,8 @@
 <body>
 
 <div class="container">
-  <h1 class="header-title">✂ ヘアカット専門店
-    ankh上石神井店
-    ネット受付</h1>
+  <!-- id="headerTitle" を追加しました -->
+  <h1 class="header-title" id="headerTitle">✂ ヘアカット専門店<br>ankh上石神井店<br>ネット受付</h1>
 
   <!-- 受付カード -->
   <div class="card" id="formCard">
@@ -545,6 +544,16 @@
 
   function render() {
     checkLimit();
+
+    // ネット受付機能のON/OFFに応じてタイトルの末尾を切り替える処理
+    const headerTitleElement = document.getElementById('headerTitle');
+    if (headerTitleElement) {
+      if (netBookingEnabled) {
+        headerTitleElement.innerHTML = '✂ ヘアカット専門店<br>ankh上石神井店<br>ネット受付';
+      } else {
+        headerTitleElement.innerHTML = '✂ ヘアカット専門店<br>ankh上石神井店<br>順番待ち';
+      }
+    }
 
     const totalGroups = currentQueue.length;
     const totalPeople = currentQueue.reduce((sum, item) => sum + item.count, 0);
